@@ -717,7 +717,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e56763529af17e3483297e40fddeb2992117485498ec56a7c410c8a7825b7fee"
 dependencies = [
  "candle-core 0.8.3",
+ "candle-metal-kernels 0.8.3",
  "half",
+ "metal 0.27.0",
  "num-traits",
  "rayon",
  "safetensors",

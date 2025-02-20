@@ -30,6 +30,10 @@ path = "examples/embed.rs"
 name = "mistral"
 path = "examples/mistral.rs"
 
+[[bin]]
+name = "embed-many"
+path = "examples/embed-many.rs"
+
 [build-dependencies]
 tauri-build = { version = "2", features = ["isolation"] }
 
@@ -41,9 +45,9 @@ serde_json = "1"
 imap = "2.4.1"
 native-tls = "0.2.14"
 dotenv = "0.15.0"
-candle-nn = "0.8.3"
+candle-nn = { version = "0.8.3", features = ["metal"] }
 candle-core = { version = "0.8.3", features = ["metal"] }
-candle-transformers = "0.8.3"
+candle-transformers = { version = "0.8.3", features = ["metal"] }
 hf-hub = "0.4.1"
 tokenizers = "0.21.0"
 anyhow = "1.0.96"

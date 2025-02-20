@@ -6,7 +6,8 @@ use candle_transformers::models::jina_bert::{BertModel, Config, PositionEmbeddin
 use hf_hub::{api::sync::Api, Repo, RepoType};
 
 pub fn get_embedding(text: &str) -> anyhow::Result<Tensor> {
-    let device = candle::Device::Cpu;
+    // Initialize Metal device instead of CPU
+    let device = candle::Device::new_metal(0)?;
 
     // Get model and tokenizer files
     let model_name = "jinaai/jina-embeddings-v2-base-en";

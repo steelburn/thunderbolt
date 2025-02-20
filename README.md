@@ -18,7 +18,7 @@ bun run tauri dev
 
 ## Run Rust Examples
 
-# Important! Embed and mistral need to be built for release - they will hang you just run them with `cargo run --bin embed` in debug mode.
+Important! Embed and mistral need to be built for release - they will hang you just run them with `cargo run --bin embed` in debug mode.
 
 ```sh
 cd src-tauri
