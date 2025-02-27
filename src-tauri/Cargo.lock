@@ -4400,8 +4400,10 @@ dependencies = [
  "chrono",
  "dotenv",
  "entity",
+ "futures",
  "hf-hub 0.4.1",
  "html2text",
+ "http 1.2.0",
  "imap",
  "mailparse",
  "migration",
@@ -4418,6 +4420,7 @@ dependencies = [
  "tauri-plugin-websocket",
  "tokenizers",
  "tokio",
+ "tokio-stream",
  "uuid 1.14.0",
 ]
 

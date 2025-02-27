@@ -1,7 +1,7 @@
 import { createOpenAI } from '@ai-sdk/openai'
 import { Message, useChat } from '@ai-sdk/solid'
 import { invoke } from '@tauri-apps/api/core'
-import { fetch as rawTauriFetch } from '@tauri-apps/plugin-http'
+// import { fetch as rawTauriFetch } from '@tauri-apps/plugin-http'
 import { streamText, tool, ToolInvocation } from 'ai'
 import { z } from 'zod'
 import ChatUI from './ChatUI'
@@ -58,18 +58,18 @@ const p2 = `
   Note: you need to include the "gmail/" prefix for message and thread ids.
   `
 
-const tauriFetch = async (url: RequestInfo | URL, options: RequestInit) => {
-  console.log('tauriFetch', url, options)
-  return rawTauriFetch(url, options)
-}
+// const tauriFetch = async (url: RequestInfo | URL, options: RequestInit) => {
+//   console.log('tauriFetch', url, options)
+//   return rawTauriFetch(url, options)
+// }
 
 const ollama = createOpenAI({
   baseURL: 'http://localhost:11434/v1',
 
-  fetch: async (input: RequestInfo | URL, init: RequestInit = {}) => {
-    console.log('tauri fetch', input, init)
-    return tauriFetch(input, init)
-  },
+  // fetch: async (input: RequestInfo | URL, init: RequestInit = {}) => {
+  //   console.log('tauri fetch', input, init)
+  //   return tauriFetch(input, init)
+  // },
   // compatibility: 'compatible',
   apiKey: 'ollama',
 })
@@ -79,10 +79,10 @@ const fetch = async (input: RequestInfo | URL, init: RequestInit = {}) => {
 
   console.log('openaiApiKey', openaiApiKey)
   const openai = createOpenAI({
-    fetch: async (input: RequestInfo | URL, init: RequestInit = {}) => {
-      console.log('tauri fetch', input, init)
-      return tauriFetch(input, init)
-    },
+    // fetch: async (input: RequestInfo | URL, init: RequestInit = {}) => {
+    //   console.log('tauri fetch', input, init)
+    //   return tauriFetch(input, init)
+    // },
     apiKey: await invoke('get_openai_api_key'),
   })
 
@@ -116,11 +116,11 @@ const fetch = async (input: RequestInfo | URL, init: RequestInit = {}) => {
     //   structuredOutputs: true,
     // }),
     model: openai('gpt-4o', {
-      structuredOutputs: true,
+      // structuredOutputs: true,
     }),
     system: p2,
     messages: processedMessages,
-    // toolCallStreaming: true, // Causes issues because this results in incomplete result objects getting passed to React components. Experimentation to block rendering until the full objects are available is needed.
+    toolCallStreaming: true, // Causes issues because this results in incomplete result objects getting passed to React components. Experimentation to block rendering until the full objects are available is needed.
     tools: {
       search: tool({
         description: "A tool for searching the user's inbox.",
@@ -149,7 +149,7 @@ const fetch = async (input: RequestInfo | URL, init: RequestInit = {}) => {
     onFinish: async () => {
       // console.log('done', result.reasoning, result.finishReason, result.warnings, result.text, result.toolResults)
     },
-    toolChoice: 'required',
+    // toolChoice: 'required',
   })
 
   return result.toDataStreamResponse()
@@ -162,7 +162,7 @@ export default function App() {
     // streamProtocol: 'text',
   })
 
-  // console.log('messages', messages())
+  // console.log('messages', chatHelpers.messages())
 
   return <ChatUI chatHelpers={chatHelpers} />
 }

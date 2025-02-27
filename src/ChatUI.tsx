@@ -17,6 +17,7 @@ export default function ChatUI({ chatHelpers }: ChatUIProps) {
           {(message, i) =>
             message.role === 'assistant' ? (
               <div class="p-4 space-y-2 rounded-tl-lg rounded-tr-lg rounded-br-lg max-w-3/4 bg-white border border-gray-200 mr-auto">
+                <div class="text-gray-700 leading-relaxed">{message.content}</div>
                 <For each={message.parts.filter((part) => part.type === 'tool-invocation')}>
                   {(part) => {
                     const { toolName, toolCallId, args } = part.toolInvocation
