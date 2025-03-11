@@ -5,36 +5,24 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-// Equivalent to lodash.get
-export function getPath(obj: any, path?: string, defaultValue?: any) {
-  if (!path) return obj
+/**
+ * Converts a v7 UUID string to a Date object
+ * High-performance implementation that avoids regex and minimizes string operations
+ * @param uuid - A v7 UUID string
+ * @returns Date object representing the timestamp encoded in the UUID
+ */
+export function uuidToDate(uuid: string): Date {
+  // UUID v7 format: <36-bit timestamp><84-bit random>
+  // The timestamp is the first 36 bits (first 9 characters after removing hyphens)
 
-  const keys = path.split('.')
-  let result = obj
-  for (const key of keys) {
-    if (result === null || result === undefined) return defaultValue
-    result = result[key]
-  }
-  return result
-}
+  // Extract and combine the timestamp parts directly without regex
+  // Format: xxxxxxxx-xxxx-...
+  const timestampHex = uuid.substring(0, 8) + uuid.substring(9, 10)
 
-// Equivalent to lodash.set
-export function setPath(obj: any, path: string | null, value: any) {
-  if (!path) {
-    // If path is not specified, set the entire object
-    Object.assign(obj, value)
-    return obj
-  }
+  // Convert hex to decimal (milliseconds since Unix epoch)
+  // Using parseInt with radix 16 for hex conversion
+  const timestampMs = parseInt(timestampHex, 16)
 
-  const keys = path.split('.')
-  let current = obj
-  for (let i = 0; i < keys.length - 1; i++) {
-    const key = keys[i]
-    if (current[key] === undefined) {
-      current[key] = {}
-    }
-    current = current[key]
-  }
-  current[keys[keys.length - 1]] = value
-  return obj
+  // Create and return the Date object directly
+  return new Date(timestampMs)
 }

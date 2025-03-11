@@ -1,6 +1,7 @@
 import type { UseChatHelpers } from '@ai-sdk/solid'
 import { For, Match, Switch } from 'solid-js'
 import { AgentToolResponse } from './AgentChatResponse'
+import { unwrap } from 'solid-js/store'
 
 interface ChatUIProps {
   chatHelpers: UseChatHelpers
@@ -9,7 +10,7 @@ interface ChatUIProps {
 export default function ChatUI({ chatHelpers }: ChatUIProps) {
   const { messages, input, handleInputChange, handleSubmit } = chatHelpers
 
-  console.log('messages', messages())
+  console.log('messages', unwrap(messages()))
 
   return (
     <div class="flex flex-col h-full bg-gray-50 overflow-hidden">

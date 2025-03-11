@@ -10,7 +10,6 @@
         "@modular-forms/solid": "^0.25.1",
         "@solidjs/router": "^0.15.3",
         "@tailwindcss/vite": "^4.0.9",
-        "@tanstack/solid-query": "^5.67.3",
         "@tauri-apps/api": "^2",
         "@tauri-apps/plugin-fs": ">=2",
         "@tauri-apps/plugin-http": "^2.3.0",
@@ -31,6 +30,7 @@
         "tailwind-merge": "^3.0.2",
         "tailwindcss": "^4.0.9",
         "tailwindcss-animate": "^1.0.7",
+        "uuid": "^11.1.0",
         "zod": "^3.24.2",
       },
       "devDependencies": {
@@ -297,10 +297,6 @@
     "@tailwindcss/oxide-win32-x64-msvc": ["@tailwindcss/oxide-win32-x64-msvc@4.0.10", "", { "os": "win32", "cpu": "x64" }, "sha512-K/51OZBREcq2J4JE8r9qdX2qjnVfUrm8AT4R+Pd9E27AiIyr7IkLQQjR3mj2Lpb/jUtQ8NS0KkJ1nXMoQpSlkQ=="],
 
     "@tailwindcss/vite": ["@tailwindcss/vite@4.0.10", "", { "dependencies": { "@tailwindcss/node": "4.0.10", "@tailwindcss/oxide": "4.0.10", "lightningcss": "^1.29.1", "tailwindcss": "4.0.10" }, "peerDependencies": { "vite": "^5.2.0 || ^6" } }, "sha512-SFY/FgEj68k/6o3Q0PxoZK6KzQZV9T4yMy+kwOGq17NOWXAyDJ+Fagz3tkzqhzKpWTzMMPFfIo+g5r3seyp6uQ=="],
-
-    "@tanstack/query-core": ["@tanstack/query-core@5.67.3", "", {}, "sha512-pq76ObpjcaspAW4OmCbpXLF6BCZP2Zr/J5ztnyizXhSlNe7fIUp0QKZsd0JMkw9aDa+vxDX/OY7N+hjNY/dCGg=="],
-
-    "@tanstack/solid-query": ["@tanstack/solid-query@5.67.3", "", { "dependencies": { "@tanstack/query-core": "5.67.3" }, "peerDependencies": { "solid-js": "^1.6.0" } }, "sha512-Ve09X67/pxc6XCfaKA9N5F//aBIcKCO6Q0pwBW6SGilpQPbrxsgM2Ue8V5uoI6W5AMjU7m6DP0zmbcadG09eRw=="],
 
     "@tauri-apps/api": ["@tauri-apps/api@2.3.0", "", {}, "sha512-33Z+0lX2wgZbx1SPFfqvzI6su63hCBkbzv+5NexeYjIx7WA9htdOKoRR7Dh3dJyltqS5/J8vQFyybiRoaL0hlA=="],
 
@@ -687,6 +683,8 @@
     "uqr": ["uqr@0.1.2", "", {}, "sha512-MJu7ypHq6QasgF5YRTjqscSzQp/W11zoUk6kvmlH+fmWEs63Y0Eib13hYFwAzagRJcVY8WVnlV+eBDUGMJ5IbA=="],
 
     "use-sync-external-store": ["use-sync-external-store@1.4.0", "", { "peerDependencies": { "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-9WXSPC5fMv61vaupRkCKCxsPxBocVnwakBEkMIHHpkTTg6icbJtg6jzgtLDm4bl3cSHAca52rYWih0k4K3PfHw=="],
+
+    "uuid": ["uuid@11.1.0", "", { "bin": { "uuid": "dist/esm/bin/uuid" } }, "sha512-0/A9rDy9P7cJ+8w1c9WD9V//9Wj15Ce2MPz8Ri6032usz+NfePxx5AcN3bN+r6ZL6jEo066/yNYB3tn4pQEx+A=="],
 
     "valibot": ["valibot@1.0.0-rc.3", "", { "peerDependencies": { "typescript": ">=5" }, "optionalPeers": ["typescript"] }, "sha512-LT0REa7Iqx4QGcaHLiTiTkcmJqJ9QdpOy89HALFFBJgejTS64GQFRIbDF7e4f6pauQbo/myfKGmWXCLhMeM6+g=="],
 

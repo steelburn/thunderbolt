@@ -1,7 +1,8 @@
 import { createClient } from '@libsql/client'
 import 'dotenv/config'
 import { drizzle } from 'drizzle-orm/libsql'
-
+import * as schema from './schema'
+import { relations } from 'drizzle-orm'
 // This is for local migrations during development only - not used in IRL
 
 // Create a client with encryption configuration
@@ -10,4 +11,4 @@ const client = createClient({
   encryptionKey: 'your_secure_encryption_key_here', // Use the same key as in main.rs
 })
 
-export const db = drizzle(client)
+export const db = drizzle(client, { schema: { ...schema, ...relations } })

@@ -1,9 +1,6 @@
 import { useChat } from '@ai-sdk/solid'
-import { A } from '@solidjs/router'
-import { Settings } from 'lucide-solid'
-import { Button } from './components/button'
 import ChatUI from './components/chat/ChatUI'
-import { Sidebar } from './components/sidebar'
+import { HomeSidebar } from './home-sidebar'
 import { aiFetchStreamingResponse } from './lib/ai'
 import { useSettings } from './settings/provider'
 
@@ -26,19 +23,7 @@ export default function Home() {
 
   return (
     <>
-      <Sidebar>
-        <div class="flex flex-col gap-4">
-          <Button as={A} href="/settings/accounts" variant="outline">
-            <Settings class="size-4" />
-            Settings
-          </Button>
-          <div class="flex flex-col gap-2">
-            <Button as={A} href="/ui-kit" variant="ghost" class="justify-start">
-              UI Kit
-            </Button>
-          </div>
-        </div>
-      </Sidebar>
+      <HomeSidebar />
       <div class="h-full w-full">
         <ChatUI chatHelpers={chatHelpers} />
       </div>

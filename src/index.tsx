@@ -1,6 +1,7 @@
 import { Route, Router } from '@solidjs/router'
 import { createSignal, onMount, Show } from 'solid-js'
 import { render } from 'solid-js/web'
+import ChatDetailPage from './chats/detail'
 import { DrizzleProvider } from './components/drizzle'
 import { initializeDrizzleDatabase } from './db/database'
 import { migrate } from './db/migrate'
@@ -80,6 +81,7 @@ export const App = () => {
         <SettingsProvider key="main">
           <Router root={Layout}>
             <Route path="/" component={Home} />
+            <Route path="/chats/:chatThreadId" component={ChatDetailPage} />
             <Route path="/settings" component={Settings}>
               <Route path="/accounts" component={AccountsSettingsPage} />
               <Route path="/models" component={ModelsSettingsPage} />
