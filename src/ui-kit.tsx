@@ -114,7 +114,7 @@ export default function UiKitPage() {
         </Button>
         <Button>Default Button</Button>
         <div className="h-px bg-gray-200 dark:bg-gray-700 my-10" />
-        <h2 className="text-2xl font-bold">Mail Card</h2>
+        <h2 className="text-2xl font-bold">Mail Card List</h2>
         <MailCardList>
           {fakeEmails.map((email) => (
             <MailCard
