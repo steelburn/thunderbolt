@@ -14,16 +14,6 @@ export const toolset = {
     execute: async () => {
       const messages = await invoke<ParsedEmail[]>('fetch_inbox', { count: 3 })
 
-      console.log(
-        messages.map(
-          (message) => `
-          Type: Message
-          Message ID: ${getMessageIdFromParsedEmail(message)}
-          Subject: ${getSubjectFromParsedEmail(message)}
-          Body: ${message.clean_text}
-        `
-        )
-      )
       return messages.map(
         (message) => `
           Type: Message
@@ -31,6 +21,20 @@ export const toolset = {
           Subject: ${getSubjectFromParsedEmail(message)}
           Body: ${message.clean_text}
         `
+      )
+    },
+  }),
+  listMailboxes: tool({
+    description: "List all mailboxes in the user's inbox.",
+    parameters: z.object({}),
+    execute: async () => {
+      const mailboxes = await invoke<Record<string, number>>('list_mailboxes')
+
+      return Object.entries(mailboxes).map(
+        ([name, count]) => `
+        Mailbox: ${name}
+        Count: ${count}
+      `
       )
     },
   }),

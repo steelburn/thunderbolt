@@ -5,11 +5,48 @@ use mail_parser::MessageParser;
 use regex::Regex;
 use serde_json;
 
+use std::collections::HashMap;
+
 fn remove_urls(input: &str) -> String {
     let url_regex = Regex::new(r"https?://[^\s]+|www\.[^\s]+").unwrap();
     let cleaned = url_regex.replace_all(input, "");
     let whitespace_regex = Regex::new(r"\s+").unwrap();
     whitespace_regex.replace_all(&cleaned, " ").to_string()
+}
+
+pub fn list_mailboxes(settings: &Settings) -> anyhow::Result<HashMap<String, u32>> {
+    let settings = settings
+        .account
+        .as_ref()
+        .ok_or_else(|| anyhow::anyhow!("Account settings not found"))?;
+
+    let domain = &settings.hostname;
+    let username = &settings.username;
+    let password = &settings.password;
+    let port = settings.port;
+
+    let client = imap::ClientBuilder::new(&domain, port)
+        .danger_skip_tls_verify(true)
+        .connect()?;
+
+    let mut imap_session = client
+        .login(&username, &password)
+        .map_err(|e| anyhow::anyhow!(e.0))?;
+
+    let mailboxes = imap_session.list(Some(""), Some("*"))?;
+
+    let mut result = HashMap::new();
+
+    for mailbox in mailboxes.iter() {
+        if let Ok(status) = imap_session.status(mailbox.name(), "MESSAGES") {
+            let count = status.exists;
+            result.insert(mailbox.name().to_string(), count);
+        }
+    }
+
+    imap_session.logout()?;
+
+    Ok(result)
 }
 
 pub fn fetch_inbox(
@@ -26,13 +63,6 @@ pub fn fetch_inbox(
     let password = &settings.password;
     let port = settings.port;
 
-    // Print all settings for debugging
-    println!("IMAP Settings:");
-    println!("  Domain: {}", domain);
-    println!("  Username: {}", username);
-    println!("  Password: {}", password);
-    println!("  Port: {}", port);
-
     let client = imap::ClientBuilder::new(&domain, port)
         // .mode(imap::ConnectionMode::Tls)
         .danger_skip_tls_verify(true)
@@ -45,8 +75,27 @@ pub fn fetch_inbox(
     // imap_session.debug = true;
     imap_session.select("INBOX")?;
 
-    let count = count.unwrap_or(10);
-    let fetch_range = format!("1:{}", count);
+    // Get the total number of messages in the inbox
+    let status = imap_session.status("INBOX", "MESSAGES")?;
+    let total_messages = status.exists as usize;
+
+    // If inbox is empty, return empty result
+    if total_messages == 0 {
+        imap_session.logout()?;
+        return Ok(Vec::new());
+    }
+
+    // Calculate the actual range to fetch (min of requested count and total available)
+    let requested_count = count.unwrap_or(10);
+    let actual_count = std::cmp::min(requested_count, total_messages);
+
+    // Create the fetch range
+    let fetch_range = if actual_count == total_messages {
+        format!("1:{}", total_messages)
+    } else {
+        // Get the most recent messages
+        format!("{}:{}", total_messages - actual_count + 1, total_messages)
+    };
 
     let messages = imap_session.fetch(&fetch_range, "RFC822")?;
 
@@ -229,4 +278,86 @@ pub fn messages_to_json_values(
     }
 
     Ok(result)
+}
+
+/// Fetches messages from all available mailboxes
+pub fn fetch_all_mailboxes(
+    settings: &Settings,
+    count_per_mailbox: Option<usize>,
+) -> anyhow::Result<Vec<mail_parser::Message>> {
+    let settings = settings
+        .account
+        .as_ref()
+        .ok_or_else(|| anyhow::anyhow!("Account settings not found"))?;
+
+    let domain = &settings.hostname;
+    let username = &settings.username;
+    let password = &settings.password;
+    let port = settings.port;
+
+    let client = imap::ClientBuilder::new(&domain, port)
+        .danger_skip_tls_verify(true)
+        .connect()?;
+
+    let mut imap_session = client
+        .login(&username, &password)
+        .map_err(|e| anyhow::anyhow!(e.0))?;
+
+    // List all mailboxes
+    let mailboxes = imap_session.list(Some(""), Some("*"))?;
+
+    let mut all_messages: Vec<mail_parser::Message> = Vec::new();
+
+    // Iterate through each mailbox
+    for mailbox in mailboxes.iter() {
+        let mailbox_name = mailbox.name().to_string();
+
+        // Try to select the mailbox
+        match imap_session.select(&mailbox_name) {
+            Ok(_) => {
+                // Get the total number of messages in this mailbox
+                if let Ok(status) = imap_session.status(&mailbox_name, "MESSAGES") {
+                    let total_messages = status.exists as usize;
+
+                    if total_messages > 0 {
+                        // Calculate how many messages to fetch
+                        let requested_count = count_per_mailbox.unwrap_or(10);
+                        let actual_count = std::cmp::min(requested_count, total_messages);
+
+                        // Create the fetch range
+                        let fetch_range = if actual_count == total_messages {
+                            format!("1:{}", total_messages)
+                        } else {
+                            // Get the most recent messages
+                            format!("{}:{}", total_messages - actual_count + 1, total_messages)
+                        };
+
+                        // Fetch messages from this mailbox
+                        if let Ok(messages) = imap_session.fetch(&fetch_range, "RFC822") {
+                            for message in messages.iter() {
+                                if let Some(body) = message.body() {
+                                    if let Ok(body_str) = std::str::from_utf8(body) {
+                                        if let Some(parsed_message) =
+                                            MessageParser::default().parse(body_str.as_bytes())
+                                        {
+                                            all_messages.push(parsed_message.into_owned());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                // Log error but continue with other mailboxes
+                eprintln!("Could not select mailbox {}: {}", mailbox_name, e);
+            }
+        }
+    }
+
+    // Be nice to the server and log out
+    imap_session.logout()?;
+
+    Ok(all_messages)
 }

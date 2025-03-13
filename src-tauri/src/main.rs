@@ -32,6 +32,29 @@ async fn toggle_dock_icon(app_handle: tauri::AppHandle, show: bool) -> Result<()
 }
 
 #[command]
+async fn list_mailboxes(app_handle: tauri::AppHandle) -> Result<serde_json::Value, String> {
+    let state = app_handle.state::<Mutex<AppState>>();
+    let settings = {
+        let mut state = state.lock().await;
+        let conn = state
+            .libsql
+            .as_mut()
+            .ok_or_else(|| "Database not initialized".to_string())?;
+
+        get_settings(conn)
+            .await
+            .map_err(|e| format!("Failed to get settings: {}", e))?
+    };
+
+    // Call the list_mailboxes function from imap_client
+    let mailboxes = mozilla_assist_lib::imap_client::list_mailboxes(&settings)
+        .map_err(|e| format!("Failed to list mailboxes: {}", e))?;
+
+    // Convert the HashMap to a JSON value
+    serde_json::to_value(&mailboxes).map_err(|e| format!("Failed to serialize mailboxes: {}", e))
+}
+
+#[command]
 async fn fetch_inbox(
     app_handle: tauri::AppHandle,
     count: Option<usize>,
@@ -82,6 +105,7 @@ async fn main() -> Result<()> {
             libsql::execute,
             libsql::select,
             fetch_inbox,
+            list_mailboxes
         ]);
 
     #[cfg(debug_assertions)]
