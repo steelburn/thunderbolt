@@ -1,5 +1,5 @@
 import type { UseChatHelpers } from '@ai-sdk/react'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { AgentToolResponse } from './agent-tool-response'
 
 interface ChatUIProps {
@@ -7,9 +7,15 @@ interface ChatUIProps {
 }
 
 export default function ChatUI({ chatHelpers }: ChatUIProps) {
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
   useEffect(() => {
-    console.log('messages', chatHelpers.messages)
-  }, [chatHelpers])
+    scrollToBottom()
+  }, [chatHelpers.messages])
 
   return (
     <div className="flex flex-col h-full bg-gray-50 overflow-hidden">
@@ -37,6 +43,7 @@ export default function ChatUI({ chatHelpers }: ChatUIProps) {
           }
           return null
         })}
+        <div ref={messagesEndRef} />
       </div>
 
       <div className="border-t border-gray-200 p-4 bg-white">
