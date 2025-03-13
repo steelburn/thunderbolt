@@ -13,6 +13,52 @@ export default function UiKitPage() {
     { value: 'grape', label: 'Grape' },
     { value: 'mango', label: 'Mango' },
   ]
+
+  const fakeEmails = [
+    {
+      id: 'mail-1',
+      from: 'john.doe@company.com',
+      to: 'me@example.com',
+      date: '2:34 PM',
+      content:
+        "Hi there,\n\nI hope this email finds you well. I wanted to follow up on the project timeline we discussed in yesterday's meeting. Could you please confirm if the proposed deadlines work for your team?\n\nLooking forward to your response.\n\nBest regards,\nJohn",
+      attachments: [{ filename: 'project_timeline.pdf', url: '/files/project_timeline.pdf' }],
+    },
+    {
+      id: 'mail-2',
+      from: 'marketing@newsletter.com',
+      to: 'me@example.com',
+      date: 'Yesterday',
+      content: 'Check out our latest product offerings and exclusive deals just for you!',
+      attachments: [
+        { filename: 'catalog_2023.pdf', url: '/files/catalog_2023.pdf' },
+        { filename: 'price_list.xlsx', url: '/files/price_list.xlsx' },
+      ],
+    },
+    {
+      id: 'mail-3',
+      from: 'support@service.com',
+      to: 'me@example.com',
+      date: 'Jan 15',
+      content: 'Your support ticket #45678 has been resolved. Please let us know if you need any further assistance.',
+    },
+    {
+      id: 'mail-4',
+      from: 'team@project.org',
+      to: 'me@example.com',
+      date: 'Jan 12',
+      content: 'The team meeting has been rescheduled to Thursday at 2pm. Please update your calendar accordingly.',
+      attachments: [{ filename: 'meeting_agenda.docx', url: '/files/meeting_agenda.docx' }],
+    },
+    {
+      id: 'mail-5',
+      from: 'notifications@platform.com',
+      to: 'me@example.com',
+      date: 'Jan 10',
+      content: 'Your account password was recently changed. If you did not make this change, please contact support immediately.',
+    },
+  ]
+
   return (
     <>
       <Sidebar>
@@ -70,25 +116,31 @@ export default function UiKitPage() {
         <div className="h-px bg-gray-200 dark:bg-gray-700 my-10" />
         <h2 className="text-2xl font-bold">Mail Card</h2>
         <MailCardList>
-          <MailCard id="mail-1" from="sender1@example.com" to="me@example.com" date="Today" content="First email content" />
-
-          <MailCard
-            id="mail-2"
-            from="sender2@example.com"
-            to="me@example.com"
-            date="Yesterday"
-            content="Second email content"
-            footer={
-              <>
-                <Button variant="file">
-                  <Paperclip className="size-5" />
-                  example.pdf
-                </Button>
-              </>
-            }
-          />
-
-          {/* Add more MailCard components as needed */}
+          {fakeEmails.map((email) => (
+            <MailCard
+              key={email.id}
+              id={email.id}
+              from={email.from}
+              to={email.to}
+              date={email.date}
+              content={email.content}
+              footer={
+                email.attachments &&
+                email.attachments.length > 0 && (
+                  <>
+                    {email.attachments.map((attachment) => (
+                      <Button key={attachment.filename} variant="file" asChild>
+                        <a href={attachment.url} target="_blank" rel="noopener noreferrer">
+                          <Paperclip className="size-5" />
+                          {attachment.filename}
+                        </a>
+                      </Button>
+                    ))}
+                  </>
+                )
+              }
+            />
+          ))}
         </MailCardList>
       </div>
     </>
