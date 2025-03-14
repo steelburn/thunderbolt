@@ -1,5 +1,6 @@
 import { Sidebar } from '@/components/sidebar'
 import { Button } from '@/components/ui/button'
+import { ChatNavButton } from '@/components/ui/chat-nav-button'
 import { useDrizzle } from '@/db/provider'
 import { chatThreadsTable } from '@/db/schema'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -58,9 +59,9 @@ export function ChatLayout() {
           </div>
           <div className="flex flex-col gap-2">
             {chatThreads.map((thread) => (
-              <Button key={thread.id} asChild variant={thread.id === currentChatThreadId ? 'outline' : 'ghost'} className="justify-start">
+              <ChatNavButton key={thread.id} asChild className="justify-start" chatTitle={thread.id}>
                 <Link to={`/chats/${thread.id}`}>{thread.title}</Link>
-              </Button>
+              </ChatNavButton>
             ))}
           </div>
         </div>

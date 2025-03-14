@@ -1,3 +1,4 @@
+import { Slot } from '@radix-ui/react-slot'
 import { Ellipsis, Trash2 } from 'lucide-react'
 import * as React from 'react'
 
@@ -7,11 +8,14 @@ import { cn } from '@/lib/utils'
 
 interface ChatNavButtonProps extends React.HTMLAttributes<HTMLDivElement> {
   chatTitle: string
+  asChild?: boolean
 }
 
-export function ChatNavButton({ chatTitle, className, ...props }: ChatNavButtonProps) {
+export function ChatNavButton({ chatTitle, className, asChild = false, ...props }: ChatNavButtonProps) {
+  const Comp = asChild ? Slot : 'div'
+
   return (
-    <div className={cn('relative w-full', className)} {...props}>
+    <Comp className={cn('relative w-full', className)} {...props}>
       <Popover>
         <PopoverTrigger asChild>
           <div className="group w-full h-full flex space-x-2 items-center">
@@ -39,6 +43,6 @@ export function ChatNavButton({ chatTitle, className, ...props }: ChatNavButtonP
           </div>
         </PopoverContent>
       </Popover>
-    </div>
+    </Comp>
   )
 }
