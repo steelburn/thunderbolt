@@ -9,7 +9,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { Slot } from '@radix-ui/react-slot'
@@ -63,12 +63,12 @@ export function ChatNavButton({ chatTitle, threadId, className, asChild = false,
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Delete chat?</AlertDialogTitle>
+                          <AlertDialogTitle>Delete the thread?</AlertDialogTitle>
                           <AlertDialogDescription>This action cannot be undone. This will permanently delete this chat and all its messages.</AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction>Delete</AlertDialogAction>
+                          <AlertDialogAction className={cn(buttonVariants({ variant: 'destructive' }))}>Delete</AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
