@@ -250,7 +250,7 @@ async fn generate_embeddings(
         let embedder = state
             .embedder
             .as_ref()
-            .ok_or_else(|| "Embedder not initialized".to_string())?;
+            .ok_or_else(|| "Embedder not initialized. Call init_embedder first.".to_string())?;
 
         // Get database connection based on what's available
         if let Some(pool) = &state.db_pool {
@@ -261,7 +261,7 @@ async fn generate_embeddings(
                 .map_err(|e| format!("Failed to create connection for embeddings: {}", e))?;
 
             // Generate embeddings for all messages using the shared embedder
-            assist_embeddings::generate_all_with_embedder(&conn, batch_size, Some(embedder))
+            assist_embeddings::generate_all_with_embedder(&conn, batch_size, embedder)
                 .await
                 .map_err(|e| format!("Failed to generate embeddings: {}", e))
         } else {
@@ -288,7 +288,7 @@ async fn generate_batch(app_handle: tauri::AppHandle, batch_size: usize) -> Resu
         let embedder = state
             .embedder
             .as_ref()
-            .ok_or_else(|| "Embedder not initialized".to_string())?;
+            .ok_or_else(|| "Embedder not initialized. Call init_embedder first.".to_string())?;
 
         // Get database connection based on what's available
         if let Some(pool) = &state.db_pool {
@@ -299,7 +299,7 @@ async fn generate_batch(app_handle: tauri::AppHandle, batch_size: usize) -> Resu
                 .map_err(|e| format!("Failed to create connection for embeddings: {}", e))?;
 
             // Generate embeddings for the batch using the shared embedder
-            assist_embeddings::generate_batch_with_embedder(&conn, batch_size, Some(embedder))
+            assist_embeddings::generate_batch_with_embedder(&conn, batch_size, embedder)
                 .await
                 .map_err(|e| format!("Failed to generate batch embeddings: {}", e))
         } else {
@@ -325,7 +325,7 @@ async fn get_embedding(
     let embedder = state_guard
         .embedder
         .as_ref()
-        .ok_or_else(|| "Embedder not initialized".to_string())?;
+        .ok_or_else(|| "Embedder not initialized. Call init_embedder first.".to_string())?;
 
     // Get embedding using the shared embedder instance
     let embedding = get_embedding_with_embedder(embedder, &text)
@@ -335,23 +335,31 @@ async fn get_embedding(
     serde_json::to_value(embedding).map_err(|e| format!("Failed to serialize embedding: {}", e))
 }
 
+#[command]
+async fn init_embedder(app_handle: tauri::AppHandle) -> Result<(), String> {
+    // Initialize the embedder
+    let embedder = Embedder::new().map_err(|e| format!("Failed to initialize embedder: {}", e))?;
+
+    // Store the embedder in state
+    let state = app_handle.state::<Mutex<AppState>>();
+    let mut state_guard = state.lock().await;
+    state_guard.embedder = Some(embedder);
+
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     // This should be called as early in the execution of the app as possible
     #[cfg(debug_assertions)] // only enable instrumentation in development builds
     let devtools = tauri_plugin_devtools::init();
 
-    // Initialize the embedder once
-    let embedder = Embedder::new().expect("Failed to initialize embedder");
-
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_fs::init())
-        .setup(move |app| {
-            let mut state = AppState::default();
-            state.embedder = Some(embedder);
-            app.manage(Mutex::new(state));
+        .setup(|app| {
+            app.manage(Mutex::new(AppState::default()));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -366,7 +374,8 @@ async fn main() -> Result<()> {
             sync_mailbox,
             generate_embeddings,
             get_embedding,
-            generate_batch
+            generate_batch,
+            init_embedder
         ]);
 
     #[cfg(debug_assertions)]

@@ -4,15 +4,12 @@ use candle_core as candle;
 use candle_nn::VarBuilder;
 use candle_transformers::models::jina_bert::{BertModel, Config, PositionEmbeddingType};
 use hf_hub::{api::sync::Api, Repo, RepoType};
-use std::sync::OnceLock;
 
 pub struct Embedder {
     model: BertModel,
     tokenizer: tokenizers::Tokenizer,
     device: candle::Device,
 }
-
-static EMBEDDER: OnceLock<Embedder> = OnceLock::new();
 
 impl Embedder {
     pub fn new() -> anyhow::Result<Self> {
@@ -81,11 +78,6 @@ impl Embedder {
         let normalized = normalize_l2(&embeddings).map_err(E::msg)?;
         normalized.flatten_all().map_err(E::msg)
     }
-}
-
-pub fn get_embedding(text: &str) -> anyhow::Result<Vec<f32>> {
-    let embedder = EMBEDDER.get_or_init(|| Embedder::new().unwrap());
-    get_embedding_with_embedder(embedder, text)
 }
 
 pub fn get_embedding_with_embedder(embedder: &Embedder, text: &str) -> anyhow::Result<Vec<f32>> {

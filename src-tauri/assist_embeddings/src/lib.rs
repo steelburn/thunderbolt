@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 // Make the embedding module public so it can be used in examples
 pub mod embedding;
-use embedding::{get_embedding, get_embedding_with_embedder, Embedder};
+use embedding::{get_embedding_with_embedder, Embedder};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct EmailMessage {
@@ -12,15 +12,10 @@ struct EmailMessage {
     text_body: String,
 }
 
-pub async fn generate_batch(conn: &Connection, count: usize) -> Result<usize> {
-    // This uses the OnceLock embedded in the get_embedding function
-    generate_batch_with_embedder(conn, count, None).await
-}
-
 pub async fn generate_batch_with_embedder(
     conn: &Connection,
     count: usize,
-    embedder: Option<&Embedder>,
+    embedder: &Embedder,
 ) -> Result<usize> {
     // Query to find messages without embeddings
     let query = r#"
@@ -48,10 +43,7 @@ pub async fn generate_batch_with_embedder(
 
     for (id, text_body) in messages {
         // Generate the embedding using our shared embedder that automatically truncates long text
-        let embedding = match embedder {
-            Some(emb) => get_embedding_with_embedder(emb, &text_body)?,
-            None => get_embedding(&text_body)?,
-        };
+        let embedding = get_embedding_with_embedder(embedder, &text_body)?;
 
         // Convert Vec<f32> to binary data
         let embedding_bytes: Vec<u8> = embedding
@@ -86,14 +78,10 @@ pub async fn generate_batch_with_embedder(
     Ok(processed)
 }
 
-pub async fn generate_all(conn: &Connection, batch_size: usize) -> Result<usize> {
-    generate_all_with_embedder(conn, batch_size, None).await
-}
-
 pub async fn generate_all_with_embedder(
     conn: &Connection,
     batch_size: usize,
-    embedder: Option<&Embedder>,
+    embedder: &Embedder,
 ) -> Result<usize> {
     let mut total_processed = 0;
     let mut processed_in_batch;

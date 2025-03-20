@@ -67,3 +67,16 @@ export async function search(db: DrizzleContextType['db'], searchText: string, l
     throw error
   }
 }
+
+/**
+ * Initializes the embedder model in the backend
+ * @returns A promise that resolves when the embedder is initialized
+ */
+export async function initEmbedder(): Promise<void> {
+  try {
+    await invoke('init_embedder')
+  } catch (error) {
+    console.error('Failed to initialize embedder:', error)
+    throw error
+  }
+}
