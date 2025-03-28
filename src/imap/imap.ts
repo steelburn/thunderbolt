@@ -1,5 +1,11 @@
-import { EmailMessage } from '@/types'
+import { camelCasedPropertiesDeep } from '@/lib/utils'
+import { ImapEmailMessage } from '@/types'
 import { invoke } from '@tauri-apps/api/core'
+import { SnakeCasedPropertiesDeep } from 'type-fest'
+export type ImapEmailAddress = {
+  name: string
+  address: string
+}
 
 /**
  * Interface for IMAP credentials
@@ -95,22 +101,15 @@ export default class ImapClient {
   ): Promise<{
     index: number
     total: number
-    messages: Omit<EmailMessage, 'id'>[]
+    messages: ImapEmailMessage[]
   }> {
     const result = await invoke<{
       index: number
       total: number
-      messages: any[]
+      messages: SnakeCasedPropertiesDeep<ImapEmailMessage>[]
     }>('fetch_messages', { mailbox, startIndex, count })
 
-    return {
-      ...result,
-      messages: result.messages.map((message) => ({
-        ...message,
-        fromContactId: null,
-        toContactId: null,
-        parts: message.parts || {},
-      })),
-    }
+    const camelCasedResult = camelCasedPropertiesDeep(result)
+    return camelCasedResult
   }
 }

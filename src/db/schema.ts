@@ -1,7 +1,7 @@
 import { ParsedEmail } from '@/types'
 import { Attachment, Message } from 'ai'
 import { sql } from 'drizzle-orm'
-import { customType, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import { customType, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 
 export const float32Array = customType<{
   data: number[]
@@ -75,16 +75,7 @@ export const emailMessagesTable = sqliteTable('email_messages', {
   parts: text('parts', { mode: 'json' }).notNull().$type<ParsedEmail>(),
   subject: text('subject'),
   sentAt: integer('sent_at').notNull(),
-
   fromAddress: text('from_address').references(() => emailAddressesTable.address),
-  fromContactId: text('from_contact_id').references(() => contactsTable.id),
-
-  toAddress: text('to_address').references(() => emailAddressesTable.address),
-  toContactId: text('to_contact_id').references(() => contactsTable.id),
-
-  // @todo this will become a foreign key to the email_messages table
-  inReplyTo: text('in_reply_to'),
-
   emailThreadId: text('email_thread_id').references(() => emailThreadsTable.id, { onDelete: 'set null', onUpdate: 'cascade' }),
 })
 
@@ -114,3 +105,17 @@ export const embeddingsTable = sqliteTable('embeddings', {
   embedding: float32Array('embedding', { dimensions: 384 }),
   asText: text('as_text'),
 })
+
+export const emailMessagesToAddressesTable = sqliteTable(
+  'email_messages_to_addresses',
+  {
+    emailMessageId: text('email_message_id')
+      .notNull()
+      .references(() => emailMessagesTable.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+    emailAddressId: text('email_address_id')
+      .notNull()
+      .references(() => emailAddressesTable.address, { onDelete: 'cascade', onUpdate: 'cascade' }),
+    type: text('type', { enum: ['to', 'cc', 'bcc'] }).notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.emailMessageId, table.emailAddressId] })]
+)

@@ -98,3 +98,19 @@ export type ParsedEmailHeader = {
 }
 
 export type SideviewType = 'message' | 'thread' | 'imap'
+
+export type ImapEmailAddress = {
+  name: string
+  address: string
+}
+
+export type ImapEmailMessage = {
+  id: string
+  imapId: string
+  htmlBody: string
+  textBody: string
+  subject: string
+  sentAt: number
+  toAddresses: ImapEmailAddress[]
+  fromAddress: ImapEmailAddress
+}

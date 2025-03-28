@@ -1,8 +1,8 @@
-import { emailMessagesTable } from '@/db/schema'
-import { DrizzleContextType, EmailMessage, ParsedEmail } from '@/types'
-import { count } from 'drizzle-orm'
+import { emailAddressesTable, emailMessagesTable, emailMessagesToAddressesTable } from '@/db/schema'
+import { DrizzleContextType, ImapEmailMessage, ParsedEmail } from '@/types'
+import { count, sql } from 'drizzle-orm'
 import { v7 as uuidv7 } from 'uuid'
-import ImapClient from './imap'
+import ImapClient, { ImapEmailAddress } from './imap'
 
 /**
  * **ImapSyncer**
@@ -132,28 +132,95 @@ export class ImapSyncer {
   }
 
   /**
+   * Upserts email addresses to the database
+   * @param addresses Array of email addresses to upsert
+   * @param sentAt Timestamp when the email was sent, used to update lastSeenAt if newer
+   * @returns A promise that resolves when all addresses have been upserted
+   */
+  private async upsertEmailAddresses(addresses: ImapEmailAddress[], sentAt: number): Promise<void> {
+    if (addresses.length === 0) return
+
+    const now = Date.now()
+
+    // Prepare the values for batch insertion
+    const addressValues = addresses.map((addr) => ({
+      address: addr.address.toLowerCase(), // Lowercase the address
+      name: addr.name,
+      firstSeenAt: now,
+      lastSeenAt: sentAt,
+    }))
+
+    // Batch upsert all addresses
+    await this.db
+      .insert(emailAddressesTable)
+      .values(addressValues)
+      .onConflictDoUpdate({
+        target: emailAddressesTable.address,
+        set: {
+          // Update name only if the message is newer than the last seen timestamp
+          name: sql`CASE WHEN ${emailAddressesTable.lastSeenAt} < ${sentAt} THEN excluded.name ELSE ${emailAddressesTable.name} END`,
+          // Always update lastSeenAt if it's newer
+          lastSeenAt: sql`CASE WHEN ${emailAddressesTable.lastSeenAt} < ${sentAt} THEN ${sentAt} ELSE ${emailAddressesTable.lastSeenAt} END`,
+        },
+      })
+  }
+
+  /**
+   * Associates email messages with recipient addresses
+   * @param messageId The ID of the email message
+   * @param addresses Array of recipient email addresses
+   * @returns A promise that resolves when all associations have been created
+   */
+  private async storeMessageToAddresses(messageId: string, addresses: ImapEmailAddress[]): Promise<void> {
+    if (addresses.length === 0) return
+
+    // Prepare values for batch insertion
+    const toAddressValues = addresses.map((addr) => ({
+      emailMessageId: messageId,
+      emailAddressId: addr.address.toLowerCase(), // Lowercase the address
+      type: 'to' as const, // All addresses are "to" for now
+    }))
+
+    // Batch insert all message-to-address relationships
+    await this.db.insert(emailMessagesToAddressesTable).values(toAddressValues).onConflictDoNothing()
+  }
+
+  /**
    * Store messages in the database
    * @param messages Array of messages to store
    * @returns A promise that resolves with the number of messages stored
    */
-  private async storeMessages(messages: Omit<EmailMessage, 'id'>[]): Promise<number> {
+  private async storeMessages(messages: ImapEmailMessage[]): Promise<number> {
     if (messages.length === 0) return 0
 
-    // Batch insert all messages at once instead of one by one
-    await this.db
-      .insert(emailMessagesTable)
-      .values(
-        messages.map((message) => ({
-          id: uuidv7(),
-          ...message,
-          fromAddress: null,
-          parts: {} as ParsedEmail,
-        }))
-      )
-      .onConflictDoNothing()
+    // First, extract and upsert all email addresses (both from and to)
+    for (const message of messages) {
+      // Collect all addresses to upsert
+      const allAddresses = [message.fromAddress, ...message.toAddresses]
+      await this.upsertEmailAddresses(allAddresses, message.sentAt)
+    }
 
-    // Since we can't directly get rows affected, we'll just return the number of messages
-    // that were attempted to be inserted. This is an approximation.
+    // Prepare messages for insertion
+    const messagesWithReferences = messages.map((message) => ({
+      id: uuidv7(),
+      imapId: message.imapId,
+      htmlBody: message.htmlBody,
+      textBody: message.textBody,
+      subject: message.subject,
+      sentAt: message.sentAt,
+      parts: {} as ParsedEmail,
+      fromAddress: message.fromAddress.address.toLowerCase(), // Set the fromAddress to the lowercase email
+      emailThreadId: null,
+    }))
+
+    // Batch insert all messages
+    await this.db.insert(emailMessagesTable).values(messagesWithReferences).onConflictDoNothing()
+
+    // Store the to addresses for each message
+    for (let i = 0; i < messages.length; i++) {
+      await this.storeMessageToAddresses(messagesWithReferences[i].id, messages[i].toAddresses)
+    }
+
     return messages.length
   }
 }

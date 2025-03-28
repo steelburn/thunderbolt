@@ -1,5 +1,17 @@
 import { relations } from 'drizzle-orm'
-import { chatMessagesTable, chatThreadsTable, contactsTable, emailAddressesTable, emailMessagesTable, emailThreadsTable, embeddingsTable, modelsTable, settingsTable, todosTable } from './schema'
+import {
+  chatMessagesTable,
+  chatThreadsTable,
+  contactsTable,
+  emailAddressesTable,
+  emailMessagesTable,
+  emailMessagesToAddressesTable,
+  emailThreadsTable,
+  embeddingsTable,
+  modelsTable,
+  settingsTable,
+  todosTable,
+} from './schema'
 
 export const chatThreadsRelations = relations(chatThreadsTable, ({ many }) => ({
   messages: many(chatMessagesTable),
@@ -23,7 +35,7 @@ export const embeddingsRelations = relations(embeddingsTable, ({ one }) => ({
   }),
 }))
 
-export const emailMessagesRelations = relations(emailMessagesTable, ({ one }) => ({
+export const emailMessagesRelations = relations(emailMessagesTable, ({ one, many }) => ({
   embedding: one(embeddingsTable, {
     fields: [emailMessagesTable.id],
     references: [embeddingsTable.emailMessageId],
@@ -32,22 +44,11 @@ export const emailMessagesRelations = relations(emailMessagesTable, ({ one }) =>
     fields: [emailMessagesTable.emailThreadId],
     references: [emailThreadsTable.id],
   }),
-  fromContact: one(contactsTable, {
-    fields: [emailMessagesTable.fromContactId],
-    references: [contactsTable.id],
-  }),
-  toContact: one(contactsTable, {
-    fields: [emailMessagesTable.toContactId],
-    references: [contactsTable.id],
-  }),
   fromEmailAddress: one(emailAddressesTable, {
     fields: [emailMessagesTable.fromAddress],
     references: [emailAddressesTable.address],
   }),
-  toEmailAddress: one(emailAddressesTable, {
-    fields: [emailMessagesTable.toAddress],
-    references: [emailAddressesTable.address],
-  }),
+  recipientEmailAddresses: many(emailMessagesToAddressesTable),
 }))
 
 export const emailThreadsRelations = relations(emailThreadsTable, ({ many, one }) => ({
@@ -61,8 +62,6 @@ export const emailThreadsRelations = relations(emailThreadsTable, ({ many, one }
 
 export const contactsRelations = relations(contactsTable, ({ many }) => ({
   emailAddresses: many(emailAddressesTable),
-  sentEmails: many(emailMessagesTable, { relationName: 'fromContact' }),
-  receivedEmails: many(emailMessagesTable, { relationName: 'toContact' }),
 }))
 
 export const emailAddressesRelations = relations(emailAddressesTable, ({ one, many }) => ({
@@ -70,8 +69,19 @@ export const emailAddressesRelations = relations(emailAddressesTable, ({ one, ma
     fields: [emailAddressesTable.contactId],
     references: [contactsTable.id],
   }),
-  sentEmails: many(emailMessagesTable, { relationName: 'fromEmailAddress' }),
-  receivedEmails: many(emailMessagesTable, { relationName: 'toEmailAddress' }),
+  sentEmailMessages: many(emailMessagesTable, { relationName: 'fromEmailAddress' }),
+  receivedEmailMessages: many(emailMessagesToAddressesTable),
+}))
+
+export const emailMessagesToAddressesRelations = relations(emailMessagesToAddressesTable, ({ one }) => ({
+  message: one(emailMessagesTable, {
+    fields: [emailMessagesToAddressesTable.emailMessageId],
+    references: [emailMessagesTable.id],
+  }),
+  address: one(emailAddressesTable, {
+    fields: [emailMessagesToAddressesTable.emailAddressId],
+    references: [emailAddressesTable.address],
+  }),
 }))
 
 export const todosRelations = relations(todosTable, ({ many }) => ({

@@ -40,7 +40,7 @@ pub struct EmailMessage {
     pub subject: Option<String>,
     pub sent_at: i64,
     pub from_address: EmailAddress,
-    pub to_address: Vec<EmailAddress>,
+    pub to_addresses: Vec<EmailAddress>,
     pub in_reply_to: Option<String>,
     pub references: Option<String>,
 }
@@ -266,7 +266,7 @@ impl ImapClient {
                     });
 
                 // Extract to addresses
-                let to_address = parsed_message
+                let to_addresses = parsed_message
                     .to()
                     .map(|addresses| {
                         addresses
@@ -300,7 +300,7 @@ impl ImapClient {
                     subject,
                     sent_at,
                     from_address,
-                    to_address,
+                    to_addresses,
                     in_reply_to,
                     references,
                 };
