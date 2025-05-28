@@ -5,7 +5,8 @@ description = "Backend for Thunderbolt"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
-    "fastapi[standard]>=0.115.12",
-    "litellm[proxy]>=1.70.2",
-    "pydantic-settings>=2.9.1",
+    "fastapi[standard]>=0.115.6",
+    "httpx>=0.28.1",
+    "pydantic-settings>=2.7.0",
+    "websockets>=14.1",
 ]
