@@ -1,7 +1,39 @@
 import { getDrizzleDatabase } from '@/db/singleton'
 import { settingsTable } from '@/db/tables'
+import { WeatherClient } from '@agentic/weather'
 import { eq } from 'drizzle-orm'
+import ky from 'ky'
 import { z } from 'zod'
+
+// @todo cache this
+const getOrCreateKyInstance = async () => {
+  const { db } = await getDrizzleDatabase()
+
+  const anonymousIdSetting = await db.select().from(settingsTable).where(eq(settingsTable.key, 'anonymous_id')).get()
+  const anonymousId = anonymousIdSetting?.value as string
+
+  const kyInstance = ky.create({
+    headers: {
+      Authorization: `Bearer ${anonymousId}`,
+    },
+  })
+
+  return kyInstance
+}
+
+// @todo cache this
+export const getOrCreateWeatherClient = async () => {
+  const { db } = await getDrizzleDatabase()
+
+  const cloudUrlSetting = await db.select().from(settingsTable).where(eq(settingsTable.key, 'cloud_url')).get()
+  const cloudUrl = cloudUrlSetting?.value as string
+
+  return new WeatherClient({
+    apiKey: '9963f64429764ef883e235124252705',
+    apiBaseUrl: `${cloudUrl}/proxy/weather`,
+    ky: await getOrCreateKyInstance(),
+  })
+}
 
 export const getForecast = {
   name: 'weather.getForecast',

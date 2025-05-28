@@ -1,13 +1,15 @@
 import { getDrizzleDatabase } from '@/db/singleton'
 import { settingsTable } from '@/db/tables'
+import { getOrCreateWeatherClient } from '@/extensions/weather/tools'
 import { Model, SaveMessagesFunction } from '@/types'
+import { createAISDKTools } from '@agentic/ai-sdk'
 import { createDeepInfra } from '@ai-sdk/deepinfra'
 import { createFireworks } from '@ai-sdk/fireworks'
 import { createOpenAI } from '@ai-sdk/openai'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { convertToModelMessages, extractReasoningMiddleware, LanguageModel, streamText, ToolInvocation, UIMessage, wrapLanguageModel } from 'ai'
 import { eq } from 'drizzle-orm'
-import { toolset } from './tools'
+import { createToolset, tools } from './tools'
 
 export type ToolInvocationWithResult<T = object> = ToolInvocation & {
   result: T
@@ -132,6 +134,14 @@ export const aiFetchStreamingResponse = async ({ init, saveMessages, model: mode
     const locationLatResult = await db.select().from(settingsTable).where(eq(settingsTable.key, 'location_lat')).get()
     const locationLngResult = await db.select().from(settingsTable).where(eq(settingsTable.key, 'location_lng')).get()
     const preferredNameResult = await db.select().from(settingsTable).where(eq(settingsTable.key, 'preferred_name')).get()
+
+    const weatherClient = await getOrCreateWeatherClient()
+
+    // @todo cache this?
+    const toolset = {
+      ...createToolset(tools),
+      ...createAISDKTools(weatherClient),
+    }
 
     const result = streamText({
       model,

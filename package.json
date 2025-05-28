@@ -14,6 +14,8 @@
     "db": "drizzle-kit"
   },
   "dependencies": {
+    "@agentic/ai-sdk": "^7.6.5",
+    "@agentic/weather": "^7.6.5",
     "@ai-sdk/deepinfra": "^1.0.0-alpha.3",
     "@ai-sdk/fireworks": "^1.0.0-alpha.3",
     "@ai-sdk/openai": "^2.0.0-alpha.3",
@@ -54,6 +56,7 @@
     "dayjs": "^1.11.13",
     "drizzle-orm": "^0.40.1",
     "framer-motion": "^12.12.2",
+    "ky": "^1.8.1",
     "lodash.get": "^4.4.2",
     "lodash.set": "^4.3.2",
     "lucide-react": "^0.483.0",

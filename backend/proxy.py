@@ -20,6 +20,7 @@ class ProxyConfig:
         api_key_as_query_param: bool = False,
         api_key_query_param_name: str = "key",
         strip_headers: Optional[Set[str]] = None,
+        strip_query_params: Optional[Set[str]] = None,
         require_auth: bool = True,
         supports_streaming: bool = False,
     ):
@@ -36,6 +37,10 @@ class ProxyConfig:
             "x-forwarded-proto",
             "cookie",
         }
+        # Only strip the specific API key parameter when server-configured API key is used
+        self.strip_query_params = strip_query_params or (
+            {api_key_query_param_name} if api_key and api_key_as_query_param else set()
+        )
         self.require_auth = require_auth
         self.supports_streaming = supports_streaming
 
@@ -115,7 +120,16 @@ class ProxyService:
                     for k, v in query_params.items()
                 }
 
+                # Remove any query parameters that should be stripped
+                for param in config.strip_query_params:
+                    if param in query_params:
+                        logger.debug(
+                            f"Stripping query parameter '{param}' from client request"
+                        )
+                    query_params.pop(param, None)
+
             # Add API key as query parameter if configured
+            # This ensures the server-configured API key always takes precedence
             if config.api_key and config.api_key_as_query_param:
                 query_params[config.api_key_query_param_name] = config.api_key
 
@@ -210,7 +224,16 @@ class ProxyService:
                     for k, v in query_params.items()
                 }
 
+                # Remove any query parameters that should be stripped
+                for param in config.strip_query_params:
+                    if param in query_params:
+                        logger.debug(
+                            f"Stripping query parameter '{param}' from client request"
+                        )
+                    query_params.pop(param, None)
+
             # Add API key as query parameter if configured
+            # This ensures the server-configured API key always takes precedence
             if config.api_key and config.api_key_as_query_param:
                 query_params[config.api_key_query_param_name] = config.api_key
 

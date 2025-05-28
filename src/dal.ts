@@ -51,12 +51,21 @@ export const seedModels = async (db: DrizzleContextType['db']) => {
 }
 
 export const seedSettings = async (db: DrizzleContextType['db']) => {
-  const serverUrlSetting = await db.select().from(settingsTable).where(eq(settingsTable.key, 'server_url')).get()
+  const cloudUrlSetting = await db.select().from(settingsTable).where(eq(settingsTable.key, 'cloud_url')).get()
 
-  if (!serverUrlSetting) {
+  if (!cloudUrlSetting) {
     await db.insert(settingsTable).values({
-      key: 'server_url',
-      value: 'http://localhost:3001',
+      key: 'cloud_url',
+      value: 'http://localhost:8000',
+    })
+  }
+
+  const anonymousId = await db.select().from(settingsTable).where(eq(settingsTable.key, 'anonymous_id')).get()
+
+  if (!anonymousId) {
+    await db.insert(settingsTable).values({
+      key: 'anonymous_id',
+      value: uuidv7(), // @todo look into any concerns here
     })
   }
 }

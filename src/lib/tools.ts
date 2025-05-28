@@ -1,9 +1,8 @@
 import * as tasksTools from '@/extensions/tasks/tools'
-import * as weatherTools from '@/extensions/weather/tools'
 import type { ToolConfig } from '@/types'
 import { tool, type Tool } from 'ai'
 
-export const tools = [...Object.values(weatherTools), ...Object.values(tasksTools)]
+export const tools = [...Object.values(tasksTools)]
 
 export const createTool = (config: ToolConfig) => {
   return tool({
@@ -21,5 +20,3 @@ export const createToolset = (tools: ToolConfig[]) => {
     }, {} as Record<string, Tool>),
   }
 }
-
-export const toolset = createToolset(tools)
