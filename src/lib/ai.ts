@@ -7,7 +7,6 @@ import { createDeepInfra } from '@ai-sdk/deepinfra'
 import { createFireworks } from '@ai-sdk/fireworks'
 import { createOpenAI } from '@ai-sdk/openai'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 
 import { convertToModelMessages, experimental_createMCPClient, extractReasoningMiddleware, LanguageModel, streamText, ToolInvocation, UIMessage, wrapLanguageModel, type ToolSet } from 'ai'
 import { eq } from 'drizzle-orm'
@@ -16,6 +15,8 @@ import { createToolset, tools } from './tools'
 export type ToolInvocationWithResult<T = object> = ToolInvocation & {
   result: T
 }
+
+export type MCPClient = Awaited<ReturnType<typeof experimental_createMCPClient>>
 
 type PromptParams = {
   preferredName: string
@@ -51,6 +52,7 @@ type AiFetchStreamingResponseOptions = {
   init: RequestInit
   saveMessages: SaveMessagesFunction
   model: Model
+  mcpClient?: MCPClient | null
 }
 
 export const createModel = async (modelConfig: Model): Promise<LanguageModel> => {
@@ -126,7 +128,7 @@ export const createModel = async (modelConfig: Model): Promise<LanguageModel> =>
   }
 }
 
-export const aiFetchStreamingResponse = async ({ init, saveMessages, model: modelConfig }: AiFetchStreamingResponseOptions) => {
+export const aiFetchStreamingResponse = async ({ init, saveMessages, model: modelConfig, mcpClient }: AiFetchStreamingResponseOptions) => {
   try {
     const baseModel = await createModel(modelConfig)
 
@@ -156,27 +158,25 @@ export const aiFetchStreamingResponse = async ({ init, saveMessages, model: mode
     const locationLngResult = await db.select().from(settingsTable).where(eq(settingsTable.key, 'location_lng')).get()
     const preferredNameResult = await db.select().from(settingsTable).where(eq(settingsTable.key, 'preferred_name')).get()
 
-    const mcpUrlSetting = await db.select().from(settingsTable).where(eq(settingsTable.key, 'mcp_url')).get()
-    const mcpUrl = (mcpUrlSetting?.value as string) || 'http://localhost:8000/mcp/'
-
     const weatherClient = await getOrCreateWeatherClient()
 
-    // @todo we may want to keep mcp server connections globally since they are persistent - need to research this
-
-    const mcpClient = await experimental_createMCPClient({
-      transport: new StreamableHTTPClientTransport(new URL(mcpUrl)),
-    })
-
-    // const weatherMcpClient = await createMCPClient({
-    //   transport: new StreamableHTTPClientTransport(new URL('https://server.smithery.ai/@isdaniel/mcp_weather_server/mcp?api_key=LOL_OOPS')),
-    // })
-
-    // @todo cache this?
+    // Build toolset
     const toolset: ToolSet = {
       ...createToolset(tools),
       ...createAISDKTools(weatherClient),
-      ...(await mcpClient.tools()),
-      // ...(await weatherMcpClient.tools()),
+    }
+
+    // Add MCP tools if persistent client is available
+    if (mcpClient) {
+      try {
+        const mcpTools = await mcpClient.tools()
+        Object.assign(toolset, mcpTools)
+        console.log('MCP tools loaded successfully')
+      } catch (error) {
+        console.error('Failed to load MCP tools:', error)
+      }
+    } else {
+      console.warn('No persistent MCP client available, MCP tools will not be included')
     }
 
     const result = streamText({
@@ -194,11 +194,6 @@ export const aiFetchStreamingResponse = async ({ init, saveMessages, model: mode
       tools: toolset,
       // continueUntil: hasToolCall('answer'),
       // continueUntil: maxSteps(5),
-
-      // toolChoice: 'required',
-      onFinish: async () => {
-        // await mcpClient.close()
-      },
     })
 
     return result.toUIMessageStreamResponse({

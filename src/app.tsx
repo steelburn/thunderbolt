@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { eq } from 'drizzle-orm'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 
 import ChatDetailPage from '@/chats/detail'
@@ -15,13 +16,14 @@ import { seedAccounts, seedModels, seedSettings } from './dal'
 import { initializeDrizzleDatabase } from './db/database'
 import { migrate } from './db/migrate'
 import { DrizzleProvider } from './db/provider'
-import { accountsTable } from './db/tables'
+import { accountsTable, settingsTable } from './db/tables'
 import DevToolsPage from './devtools'
 import ImapClient from './imap/imap'
 import { ImapProvider } from './imap/provider'
 import Layout from './layout'
 import { initializeAxios } from './lib/axios'
 import { createAppDataDir } from './lib/fs'
+import { MCPProvider } from './lib/mcp-provider'
 import { TrayManager, TrayProvider } from './lib/tray'
 import Loading from './loading'
 import SettingsLayout from './settings/layout'
@@ -84,6 +86,10 @@ const init = async (): Promise<InitData> => {
     }
   }
 
+  // Get MCP URL from settings
+  const mcpUrlSetting = await db.select().from(settingsTable).where(eq(settingsTable.key, 'mcp_url')).get()
+  const mcpUrl = (mcpUrlSetting?.value as string) || 'http://localhost:8000/mcp/'
+
   return {
     db,
     sqlite,
@@ -91,6 +97,7 @@ const init = async (): Promise<InitData> => {
     imapSync,
     sideviewType,
     sideviewId,
+    mcpUrl,
     ...tray,
   }
 }
@@ -110,41 +117,43 @@ export const App = () => {
     <TrayProvider tray={initData.tray} window={initData.window}>
       <QueryClientProvider client={queryClient}>
         <DrizzleProvider context={{ db: initData.db, sqlite: initData.sqlite }}>
-          <ImapProvider client={initData.imap}>
-            <ImapSyncProvider client={initData.imapSync}>
-              <SidebarProvider>
-                <SideviewProvider sideviewType={initData.sideviewType} sideviewId={initData.sideviewId}>
-                  <BrowserRouter>
-                    <Routes>
-                      <Route path="/" element={<Layout />}>
-                        {/* Home routes with HomeLayout */}
-                        <Route element={<ChatLayout />}>
-                          {/* <Route index element={<ChatNewPage />} /> */}
-                          <Route index element={<WelcomePage />} />
-                          <Route path="chats/:chatThreadId" element={<ChatDetailPage />} />
-                        </Route>
-
-                        {/* Settings routes with SettingsLayout */}
-                        <Route path="settings" element={<SettingsLayout />}>
-                          <Route index element={<Settings />} />
-                          <Route path="preferences" element={<PreferencesSettingsPage />} />
-                          <Route path="models" element={<ModelsLayout />}>
-                            <Route index element={<Navigate to="/settings/models/new" replace />} />
-                            <Route path="new" element={<NewModelPage />} />
-                            <Route path=":modelId" element={<ModelDetailPage />} />
+          <MCPProvider mcpUrl={initData.mcpUrl}>
+            <ImapProvider client={initData.imap}>
+              <ImapSyncProvider client={initData.imapSync}>
+                <SidebarProvider>
+                  <SideviewProvider sideviewType={initData.sideviewType} sideviewId={initData.sideviewId}>
+                    <BrowserRouter>
+                      <Routes>
+                        <Route path="/" element={<Layout />}>
+                          {/* Home routes with HomeLayout */}
+                          <Route element={<ChatLayout />}>
+                            {/* <Route index element={<ChatNewPage />} /> */}
+                            <Route index element={<WelcomePage />} />
+                            <Route path="chats/:chatThreadId" element={<ChatDetailPage />} />
                           </Route>
-                          <Route path="accounts" element={<AccountsSettingsPage />} />
-                        </Route>
 
-                        <Route path="ui-kit" element={<UiKitPage />} />
-                        <Route path="devtools" element={<DevToolsPage />} />
-                      </Route>
-                    </Routes>
-                  </BrowserRouter>
-                </SideviewProvider>
-              </SidebarProvider>
-            </ImapSyncProvider>
-          </ImapProvider>
+                          {/* Settings routes with SettingsLayout */}
+                          <Route path="settings" element={<SettingsLayout />}>
+                            <Route index element={<Settings />} />
+                            <Route path="preferences" element={<PreferencesSettingsPage />} />
+                            <Route path="models" element={<ModelsLayout />}>
+                              <Route index element={<Navigate to="/settings/models/new" replace />} />
+                              <Route path="new" element={<NewModelPage />} />
+                              <Route path=":modelId" element={<ModelDetailPage />} />
+                            </Route>
+                            <Route path="accounts" element={<AccountsSettingsPage />} />
+                          </Route>
+
+                          <Route path="ui-kit" element={<UiKitPage />} />
+                          <Route path="devtools" element={<DevToolsPage />} />
+                        </Route>
+                      </Routes>
+                    </BrowserRouter>
+                  </SideviewProvider>
+                </SidebarProvider>
+              </ImapSyncProvider>
+            </ImapProvider>
+          </MCPProvider>
         </DrizzleProvider>
       </QueryClientProvider>
     </TrayProvider>

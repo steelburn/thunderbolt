@@ -31,6 +31,7 @@ export type InitData = {
   window: Window | undefined
   sideviewType: SideviewType | null
   sideviewId: string | null
+  mcpUrl: string
 }
 
 export type ChatMessagePart = UIMessagePart<UIDataTypes>

@@ -2,6 +2,7 @@ import ChatUI from '@/components/chat/chat-ui'
 import { useDrizzle } from '@/db/provider'
 import { modelsTable, settingsTable } from '@/db/tables'
 import { aiFetchStreamingResponse } from '@/lib/ai'
+import { useMCP } from '@/lib/mcp-provider'
 import { Model, SaveMessagesFunction } from '@/types'
 import { useChat } from '@ai-sdk/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -38,8 +39,8 @@ const getSelectedModel = async (db: SqliteRemoteDatabase) => {
 
 export default function ChatState({ id, models, initialMessages, saveMessages }: ChatStateProps) {
   const queryClient = useQueryClient()
-
   const { db } = useDrizzle()
+  const { client: mcpClient } = useMCP()
 
   const { data: selectedModel } = useQuery<Model>({
     queryKey: ['settings', 'selected_model'],
@@ -86,6 +87,7 @@ export default function ChatState({ id, models, initialMessages, saveMessages }:
           init,
           saveMessages,
           model,
+          mcpClient,
         })
       } catch (error) {
         console.error('Error in fetch:', error)
