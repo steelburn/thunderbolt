@@ -44,7 +44,7 @@ const SuggestionButtons = ({ onSelectPrompt }: { onSelectPrompt: (prompt: string
   ]
 
   return (
-    <div className="flex flex-nowrap gap-2 justify-center mt-4 min-w-max mx-auto">
+    <div className="flex flex-wrap gap-2 justify-center mt-4 w-full max-w-[696px] mx-auto">
       {suggestions.map((suggestion, index) => (
         <SuggestionButton key={index} label={suggestion.label} prompt={suggestion.prompt} onSelect={onSelectPrompt} />
       ))}
@@ -55,7 +55,6 @@ const SuggestionButtons = ({ onSelectPrompt }: { onSelectPrompt: (prompt: string
 export default function ChatUI({ chatHelpers, models, selectedModel, onModelChange }: ChatUIProps) {
   const [hasMessages, setHasMessages] = useState(chatHelpers.messages.length > 0)
   const formRef = useRef<HTMLFormElement>(null)
-  const containerWidth = 696 // 728px container - 16px padding on each side
   const previousMessageCountRef = useRef(chatHelpers.messages.length)
 
   const { scrollContainerRef, scrollTargetRef, scrollToBottom, resetUserScroll, scrollHandlers, userHasScrolled, isAtBottom } = useAutoScroll({
@@ -100,7 +99,7 @@ export default function ChatUI({ chatHelpers, models, selectedModel, onModelChan
   }
 
   return (
-    <div className="flex flex-col h-full bg-background overflow-hidden max-w-[728px] mx-auto">
+    <div className="flex flex-col h-full bg-background overflow-hidden w-full max-w-[728px] mx-auto min-w-[300px]">
       <AnimatePresence>
         {hasMessages && (
           <motion.div ref={scrollContainerRef} {...scrollHandlers} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 p-4 overflow-y-auto space-y-4">
@@ -169,7 +168,7 @@ export default function ChatUI({ chatHelpers, models, selectedModel, onModelChan
         }}
       >
         <motion.div
-          className="flex flex-col items-center"
+          className="flex flex-col items-center w-full"
           layout
           transition={{
             type: 'tween',
@@ -180,8 +179,7 @@ export default function ChatUI({ chatHelpers, models, selectedModel, onModelChan
           <motion.form
             ref={formRef}
             onSubmit={handleSubmit}
-            className="flex flex-col gap-2 bg-secondary p-4 rounded-md"
-            style={{ width: containerWidth }}
+            className="flex flex-col gap-2 bg-secondary p-4 rounded-md w-full max-w-[696px] min-w-[268px]"
             layout
             transition={{
               type: 'tween',
