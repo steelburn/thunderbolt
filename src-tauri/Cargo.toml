@@ -18,15 +18,15 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 members = ["thunderbolt_imap_client", "thunderbolt_imap_sync", "thunderbolt_embeddings", "thunderbolt_bridge"]
 
 [workspace.dependencies]
-libsql = { version = "0.9.9", default-features = false, features = ["core"] }
+libsql = { version = "0.9.9", default-features = false, features = ["core", "encryption"] }
 anyhow = "1.0.98"
 serde = { version = "1.0.219", features = ["derive"] }
 thunderbolt-lib = { path = "." }
 
 [patch.crates-io]
-# Use git version to fix Windows build issue with to_str() method
-libsql = { git = "https://github.com/tursodatabase/libsql", branch = "main" }
-libsql-sys = { git = "https://github.com/tursodatabase/libsql", branch = "main" }
+# Use the commit that fixes Windows build issue
+libsql = { git = "https://github.com/tursodatabase/libsql", rev = "64e2b05" }
+libsql-sys = { git = "https://github.com/tursodatabase/libsql", rev = "64e2b05" }
 
 [[bin]]
 name = "thunderbolt"
@@ -63,7 +63,7 @@ keyring = { version = "3.6.2", features = [
     "sync-secret-service",
 ] }
 tauri-plugin-fs = "2.3.0"
-libsql = { version = "0.9.9", default-features = false, features = ["core"] }
+libsql = { version = "0.9.9", default-features = false, features = ["core", "encryption"] }
 base64 = "0.22.1"
 bytes = "1.10.1"
 mail-parser = { version = "0.10.2", features = ["serde_support"] }

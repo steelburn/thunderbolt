@@ -3325,7 +3325,8 @@ dependencies = [
 [[package]]
 name = "libsql"
 version = "0.9.9"
-source = "git+https://github.com/tursodatabase/libsql?branch=main#0ef59ff5659da8479b9be2cc67a9762d877a6114"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c1baac8ae0f37e50de0ea41806dcf0f35a7870a38f04aee8c90287428f22f1f1"
 dependencies = [
  "async-trait",
  "bitflags 2.9.1",
@@ -3339,7 +3340,8 @@ dependencies = [
 [[package]]
 name = "libsql-ffi"
 version = "0.9.9"
-source = "git+https://github.com/tursodatabase/libsql?branch=main#0ef59ff5659da8479b9be2cc67a9762d877a6114"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "90c8e9df679e22cc315585325e984703430681c672408f8b86f28212e6070ddb"
 dependencies = [
  "bindgen",
  "cc",
@@ -3349,7 +3351,8 @@ dependencies = [
 [[package]]
 name = "libsql-sys"
 version = "0.9.9"
-source = "git+https://github.com/tursodatabase/libsql?branch=main#0ef59ff5659da8479b9be2cc67a9762d877a6114"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a46be96f6001d2f9877dd4044f919a9c682bc65313ea84d5af83719202df4468"
 dependencies = [
  "bytes",
  "libsql-ffi",
@@ -8486,3 +8489,13 @@ dependencies = [
  "syn 2.0.101",
  "winnow 0.7.10",
 ]
+
+[[patch.unused]]
+name = "libsql"
+version = "0.9.5"
+source = "git+https://github.com/tursodatabase/libsql?rev=64e2b05#64e2b055394cf442b37cdcf1a2811bf2a67fec31"
+
+[[patch.unused]]
+name = "libsql-sys"
+version = "0.9.5"
+source = "git+https://github.com/tursodatabase/libsql?rev=64e2b05#64e2b055394cf442b37cdcf1a2811bf2a67fec31"
