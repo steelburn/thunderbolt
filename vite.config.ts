@@ -8,7 +8,7 @@ import { bundleMigrations } from './src/db/bundle-migrations'
 const host = process.env.TAURI_DEV_HOST
 
 // https://vitejs.dev/config/
-export default defineConfig(async () => ({
+export default defineConfig({
   plugins: [
     {
       name: 'bundle-migrations',
@@ -67,4 +67,7 @@ export default defineConfig(async () => ({
   optimizeDeps: {
     exclude: ['sqlocal'],
   },
-}))
+  worker: {
+    format: 'es',
+  },
+})

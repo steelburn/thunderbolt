@@ -97,7 +97,7 @@ export class Indexer {
 
   async indexNextBatch() {
     const embeddings = await this.embedNextBatch()
-    for (let embedding of embeddings) {
+    for (const embedding of embeddings) {
       await this.db.insert(embeddingsTable).values({
         id: uuidv7(),
         ...embedding,

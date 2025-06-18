@@ -45,7 +45,7 @@ export async function initializeFlowerIntelligence(): Promise<any> {
   try {
     if (!flowerInstance) {
       // Use eval to avoid TypeScript compile-time module resolution
-      // eslint-disable-next-line no-eval
+       
       const { FlowerIntelligence } = await (eval('import("../../flower/intelligence/ts/dist/flowerintelligence.es.js")') as Promise<any>)
       flowerInstance = (FlowerIntelligence as any).instance
     }

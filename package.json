@@ -87,11 +87,10 @@
     "zod": "^3.25.51"
   },
   "devDependencies": {
-    "@playwright/mcp": "^0.0.29",
-    "@playwright/test": "^1.53.0",
-    "playwright": "^1.53.0",
     "@eslint/js": "^9.28.0",
     "@libsql/client": "^0.15.8",
+    "@playwright/mcp": "^0.0.29",
+    "@playwright/test": "^1.53.0",
     "@tailwindcss/vite": "4.1.8",
     "@tauri-apps/cli": "^2.5.0",
     "@types/node": "^22.15.30",
@@ -109,7 +108,9 @@
     "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^16.2.0",
     "jsdom": "^26.1.0",
+    "playwright": "^1.53.0",
     "prettier": "^3.5.3",
     "tailwindcss": "4.1.8",
     "tsx": "^4.19.4",
