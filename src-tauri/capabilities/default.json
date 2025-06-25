@@ -38,6 +38,12 @@
           "url": "https://www.googleapis.com"
         },
         {
+          "url": "https://login.microsoftonline.com"
+        },
+        {
+          "url": "https://graph.microsoft.com"
+        },
+        {
           "url": "http://localhost:8000"
         }
       ]

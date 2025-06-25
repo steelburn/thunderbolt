@@ -5,6 +5,7 @@ import { Card, CardAction, CardContent, CardFooter, CardHeader, CardTitle } from
 import { Switch } from '@/components/ui/switch'
 import { getSetting, updateSetting } from '@/dal'
 import { configs as googleToolConfigs } from '@/integrations/google/tools'
+import { configs as microsoftToolConfigs } from '@/integrations/microsoft/tools'
 import { exchangeCodeForTokens, getUserInfo, GoogleUserInfo, OAuthTokens, redirectOAuthFlow } from '@/lib/auth'
 import { startOAuthFlowWebview } from '@/lib/oauth-webview'
 import { isTauri } from '@/lib/platform'
@@ -50,6 +51,15 @@ const GoogleIcon = () => (
       d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
       fill="#EA4335"
     />
+  </svg>
+)
+
+const MicrosoftIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <rect x="1" y="1" width="10" height="10" fill="#F25022" />
+    <rect x="13" y="1" width="10" height="10" fill="#7FBA00" />
+    <rect x="1" y="13" width="10" height="10" fill="#00A4EF" />
+    <rect x="13" y="13" width="10" height="10" fill="#FFB900" />
   </svg>
 )
 
@@ -118,8 +128,8 @@ export default function IntegrationsPage() {
           },
         }
 
-        await updateSetting('integrations_google_credentials', JSON.stringify(credentials))
-        await updateSetting('integrations_google_is_enabled', 'true')
+        await updateSetting(`integrations_${provider}_credentials`, JSON.stringify(credentials))
+        await updateSetting(`integrations_${provider}_is_enabled`, 'true')
 
         // Cleanup session storage
         sessionStorage.removeItem('oauth_state')
@@ -145,18 +155,35 @@ export default function IntegrationsPage() {
   const loadIntegrations = async () => {
     setLoading(true)
     try {
-      const isEnabled = await getSetting('integrations_google_is_enabled')
-      const credentials = await getSetting('integrations_google_credentials')
+      // Google integration --------------------------------------------------
+      const gIsEnabled = await getSetting('integrations_google_is_enabled')
+      const gCredentials = await getSetting('integrations_google_credentials')
 
-      let parsedCredentials = null
-      let userEmail = undefined
+      let gParsedCredentials: any = null
+      let gUserEmail: string | undefined = undefined
 
-      if (credentials) {
+      if (gCredentials) {
         try {
-          parsedCredentials = JSON.parse(credentials)
-          userEmail = parsedCredentials.profile?.email
+          gParsedCredentials = JSON.parse(gCredentials)
+          gUserEmail = gParsedCredentials.profile?.email
         } catch (e) {
-          console.error('Failed to parse credentials:', e)
+          console.error('Failed to parse Google credentials:', e)
+        }
+      }
+
+      // Microsoft integration ---------------------------------------------
+      const mIsEnabled = await getSetting('integrations_microsoft_is_enabled')
+      const mCredentials = await getSetting('integrations_microsoft_credentials')
+
+      let mParsedCredentials: any = null
+      let mUserEmail: string | undefined = undefined
+
+      if (mCredentials) {
+        try {
+          mParsedCredentials = JSON.parse(mCredentials)
+          mUserEmail = mParsedCredentials.profile?.email
+        } catch (e) {
+          console.error('Failed to parse Microsoft credentials:', e)
         }
       }
 
@@ -167,10 +194,21 @@ export default function IntegrationsPage() {
           provider: 'google',
           connectLabel: 'Connect Google',
           icon: <GoogleIcon />,
-          isEnabled: isEnabled === 'true',
-          isConnected: !!parsedCredentials,
-          userEmail,
-          credentials: parsedCredentials,
+          isEnabled: gIsEnabled === 'true',
+          isConnected: !!gParsedCredentials,
+          userEmail: gUserEmail,
+          credentials: gParsedCredentials,
+        },
+        {
+          id: 'microsoft',
+          name: 'Microsoft',
+          provider: 'microsoft',
+          connectLabel: 'Connect Microsoft',
+          icon: <MicrosoftIcon />,
+          isEnabled: mIsEnabled === 'true',
+          isConnected: !!mParsedCredentials,
+          userEmail: mUserEmail,
+          credentials: mParsedCredentials,
         },
       ])
     } catch (error) {
@@ -182,60 +220,60 @@ export default function IntegrationsPage() {
   }
 
   const handleConnect = async (integration: Integration) => {
-    if (integration.provider === 'google') {
-      setConnecting(true)
-      setError(null)
+    const provider = integration.provider as 'google' | 'microsoft'
 
-      try {
-        console.log('Starting Google OAuth flow...')
+    setConnecting(true)
+    setError(null)
 
-        if (isTauri()) {
-          const result = await startOAuthFlowWebview('google')
+    try {
+      console.log(`Starting ${integration.name} OAuth flow...`)
 
-          if (!result) {
-            // User cancelled the flow
-            return
-          }
+      if (isTauri()) {
+        const result = await startOAuthFlowWebview(provider)
 
-          const { tokens, userInfo } = result
-
-          const credentials = {
-            access_token: tokens.access_token,
-            refresh_token: tokens.refresh_token || '',
-            expires_at: Date.now() + tokens.expires_in * 1000,
-            profile: {
-              email: userInfo.email,
-              name: userInfo.name,
-              picture: userInfo.picture,
-            },
-          }
-
-          await updateSetting('integrations_google_credentials', JSON.stringify(credentials))
-          await updateSetting('integrations_google_is_enabled', 'true')
-
-          console.log(`Connected successfully as ${userInfo.email}`)
-
-          await loadIntegrations()
-        } else {
-          // For web: perform full redirect and let the callback route handle the rest
-          redirectOAuthFlow('google')
+        if (!result) {
+          // User cancelled the flow
+          return
         }
-      } catch (error: any) {
-        console.error('OAuth error:', error)
-        setError(error.message || 'Failed to complete authentication')
-      } finally {
-        // For web we never reach this point because the page is redirected.
-        if (isTauri()) {
-          setConnecting(false)
+
+        const { tokens, userInfo } = result
+
+        const credentials = {
+          access_token: tokens.access_token,
+          refresh_token: tokens.refresh_token || '',
+          expires_at: Date.now() + tokens.expires_in * 1000,
+          profile: {
+            email: userInfo.email,
+            name: userInfo.name,
+            picture: (userInfo as any).picture,
+          },
         }
+
+        await updateSetting(`integrations_${provider}_credentials`, JSON.stringify(credentials))
+        await updateSetting(`integrations_${provider}_is_enabled`, 'true')
+
+        console.log(`Connected successfully as ${userInfo.email}`)
+
+        await loadIntegrations()
+      } else {
+        // For web: perform full redirect and let the callback route handle the rest
+        redirectOAuthFlow(provider)
+      }
+    } catch (error: any) {
+      console.error('OAuth error:', error)
+      setError(error.message || 'Failed to complete authentication')
+    } finally {
+      // For web we never reach this point because the page is redirected.
+      if (isTauri()) {
+        setConnecting(false)
       }
     }
   }
 
   const handleDisconnect = async (integration: Integration) => {
     try {
-      await updateSetting('integrations_google_credentials', '')
-      await updateSetting('integrations_google_is_enabled', 'false')
+      await updateSetting(`integrations_${integration.provider}_credentials`, '')
+      await updateSetting(`integrations_${integration.provider}_is_enabled`, 'false')
 
       console.log(`Disconnected from ${integration.name}`)
 
@@ -317,6 +355,18 @@ export default function IntegrationsPage() {
                 <AvailableTools
                   className="pt-4"
                   tools={googleToolConfigs.map((config) => ({
+                    name: config.name,
+                    description: config.description,
+                  }))}
+                />
+              </CardContent>
+            )}
+
+            {integration.isConnected && integration.isEnabled && integration.provider === 'microsoft' && (
+              <CardContent className="border-t pt-0">
+                <AvailableTools
+                  className="pt-4"
+                  tools={microsoftToolConfigs.map((config) => ({
                     name: config.name,
                     description: config.description,
                   }))}
