@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 from auth import google_router, microsoft_router
 from config import Settings
 from flower_auth import get_flower_api_key
-from pro_tools import create_pro_tools_app
+from pro.routes import create_pro_tools_app
 from proxy import ProxyConfig, ProxyService, get_proxy_service
 
 

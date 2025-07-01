@@ -45,7 +45,7 @@ const createPrompt = ({ preferredName, location }: PromptParams) => {
     preferredName ? `The user's name is ${preferredName}.` : '',
     location.name
       ? `The user's location is ${location.name}${location.lat && location.lng ? ` (${location.lat}, ${location.lng})` : ''}.`
-      : '',
+      : 'The user has not provided a location. Please ask the user for their location before using any location-based tools.',
     location.name
       ? `Please use units that are appropriate for the user's location. For example, if the user's location is in the United States, use miles and Fahrenheit and miles per hour. If the user's location is in Canada, use kilometers and Celsius and kilometers per hour.`
       : '',
@@ -54,8 +54,8 @@ const createPrompt = ({ preferredName, location }: PromptParams) => {
     `❖ You MAY have access to tools that give you access to real-time or external data.`,
     `❖ Whenever the user asks for information that depends on real-time or external data, you MUST attempt to call an appropriate tool.`,
     `❖ If the user asks for information that you do not have access to, be honest and say so.`,
-    `❖ If you have access to a tool that can provide the information, but you don't have the enough information to use it, ask the user for the missing information.`,
-    `❖ Under no circumstances should you fabricate the missing data.`,
+    `❖ Do not talk about your tools or mention tool names unless the user asks.`,
+    `❖ Many questions about topics like news, current events, etc can be answered with the search tool if there is not a more specific tool that can be used.`,
 
     // —— Self-consistency check ——
     `Before sending your final reply, silently ask yourself:`,
@@ -242,7 +242,7 @@ export const aiFetchStreamingResponse = async ({
     const baseModel = await createModel(modelConfig)
 
     const wrappedModel = wrapLanguageModel({
-      model: baseModel as any, // @todo seems like Vercel AI SDK is not typed correctly
+      model: baseModel,
       middleware: extractReasoningMiddleware({ tagName: 'think' }),
     })
 

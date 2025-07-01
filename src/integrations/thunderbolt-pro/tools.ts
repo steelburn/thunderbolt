@@ -27,8 +27,9 @@ export const searchLocationSchema = z
 
 export const weatherSchema = z
   .object({
-    lat: z.number().describe('Latitude coordinate'),
-    lng: z.number().describe('Longitude coordinate'),
+    location: z
+      .string()
+      .describe('The location name to get weather for. Only include the city name, not the state or country.'),
     days: z.number().optional().describe('Number of days to forecast (1-16, default: 3) - only used for forecast'),
   })
   .strict()
@@ -98,8 +99,7 @@ export const getCurrentWeather = async (params: WeatherParams): Promise<string> 
     const response = await ky
       .post(`${cloudUrl}/pro/weather/current`, {
         json: {
-          lat: params.lat,
-          lng: params.lng,
+          location: params.location,
         },
       })
       .json<{ weather_data: string; success: boolean; error?: string }>()
@@ -124,8 +124,7 @@ export const getWeatherForecast = async (params: WeatherParams): Promise<string>
     const response = await ky
       .post(`${cloudUrl}/pro/weather/forecast`, {
         json: {
-          lat: params.lat,
-          lng: params.lng,
+          location: params.location,
           days: params.days || 3,
         },
       })
@@ -173,37 +172,28 @@ export const searchLocations = async (params: SearchLocationParams): Promise<str
 export const configs: ToolConfig[] = [
   {
     name: 'search',
-    description: 'Search DuckDuckGo and return formatted results',
+    description: 'Search the web.',
     verb: 'searching',
     parameters: searchSchema,
     execute: search,
   },
   {
     name: 'fetch_content',
-    description: 'Fetch and parse content from a webpage URL',
+    description: 'Fetch and parse content from a webpage URL.',
     verb: 'fetching',
     parameters: fetchContentSchema,
     execute: fetchContent,
   },
   {
-    name: 'search_locations',
-    description: 'Search for locations by name to get coordinates for weather data',
-    verb: 'searching locations',
-    parameters: searchLocationSchema,
-    execute: searchLocations,
-  },
-  {
     name: 'get_current_weather',
-    description:
-      'Get the current weather for specified coordinates. Call search_locations first to find coordinates if you only have a location name.',
+    description: 'Get the current weather for a given location.',
     verb: 'getting weather',
     parameters: weatherSchema,
     execute: getCurrentWeather,
   },
   {
     name: 'get_weather_forecast',
-    description:
-      'Get the weather forecast for specified coordinates. Call search_locations first to find coordinates if you only have a location name.',
+    description: 'Get the weather forecast for a given location.',
     verb: 'forecasting weather',
     parameters: weatherSchema,
     execute: getWeatherForecast,
