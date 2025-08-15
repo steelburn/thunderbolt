@@ -15,7 +15,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar'
-import { DestructiveDialog, DestructiveDialogRef } from '@/components/DestructiveDialog'
+import { DeleteAllChatsDialog, DeleteAllChatsDialogRef } from '@/components/delete-all-chats-dialog'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { chatThreadsTable } from '@/db/tables'
 import { useDatabase } from '@/hooks/use-database'
@@ -40,6 +40,7 @@ import {
 } from 'lucide-react'
 import { useRef } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router'
+import { DeleteChatDialog, DeleteChatDialogRef } from '@/components/delete-chat-dialog'
 
 export default function ChatSidebar() {
   const navigate = useNavigate()
@@ -48,8 +49,8 @@ export default function ChatSidebar() {
   const queryClient = useQueryClient()
   const { setOpenMobile } = useSidebar()
   const isMobile = useIsMobile()
-  const deleteAllChatsDialogRef = useRef<DestructiveDialogRef>(null)
-  const deleteChatDialogRef = useRef<DestructiveDialogRef>(null)
+  const deleteAllChatsDialogRef = useRef<DeleteAllChatsDialogRef>(null)
+  const deleteChatDialogRef = useRef<DeleteChatDialogRef>(null)
   const threadIdRef = useRef<string>(null)
 
   const { chatThreadId: currentChatThreadId } = useParams()
@@ -339,22 +340,13 @@ export default function ChatSidebar() {
         <SidebarFooter />
       </SidebarContent>
       <SidebarRail />
-      <DestructiveDialog
-        confirmText="Clear all chats"
-        description="This action cannot be undone. This will permanently delete all your chats."
-        onConfirm={() => deleteAllChatsMutation.mutate()}
-        ref={deleteAllChatsDialogRef}
-        title="Are you absolutely sure?"
-      />
-      <DestructiveDialog
-        confirmText="Delete chat"
-        description="This action cannot be undone. This will permanently delete this chat."
+      <DeleteAllChatsDialog onConfirm={() => deleteAllChatsMutation.mutate()} ref={deleteAllChatsDialogRef} />
+      <DeleteChatDialog
         onCancel={() => {
           threadIdRef.current = null
         }}
         onConfirm={() => threadIdRef.current && deleteChatMutation.mutate({ id: threadIdRef.current })}
         ref={deleteChatDialogRef}
-        title="Are you absolutely sure?"
       />
     </Sidebar>
   )
