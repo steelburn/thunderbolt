@@ -7,7 +7,7 @@ import {
   AlertDialogTitle,
   AlertDialogDescription,
   AlertDialogCancel,
-} from '@/components/ui/alert-dialog' // adjust import to your project
+} from '@/components/ui/alert-dialog'
 import { Button } from './ui/button'
 
 export type DeleteChatDialogRef = {
@@ -39,14 +39,12 @@ export const DeleteChatDialog = forwardRef<DeleteChatDialogRef, DeleteChatDialog
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete this chat.
-            </AlertDialogDescription>
+            <AlertDialogDescription>This will permanently delete this chat.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={handleCancel}>Cancel</AlertDialogCancel>
             <Button variant="destructive" onClick={onConfirm}>
-              Delete chat
+              Delete Chat
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
