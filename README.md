@@ -1,7 +1,5 @@
 # Thunderbolt [[Demo]](https://thunderbolt-h9p7.onrender.com)
 
-**_(Formerly known as Mozilla Assist(ant))_**
-
 [![CI](https://github.com/thunderbird/thunderbolt/actions/workflows/ci.yml/badge.svg)](https://github.com/thunderbird/thunderbolt/actions/workflows/ci.yml)
 
 ![Thunderbolt Main Dashboard](./docs/screenshots/main.png)
@@ -32,9 +30,6 @@
 # Install Rust
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-# Use the Nightly toolchain
-rustup toolchain install nightly
-
 # Install sccache globally
 cargo install sccache
 
@@ -55,7 +50,7 @@ brew install cmake # Mac only
 
 ```sh
 # Clone the repository with submodules
-git clone --recurse-submodules https://github.com/thunderbird/thunderbolt.git
+git clone
 cd thunderbolt
 
 # Run the setup command to initialize everything
@@ -72,17 +67,11 @@ The `make setup` command will:
 ### Manual Setup (if needed)
 
 ```sh
-# Initialize submodules
-git submodule update --init --recursive
-
 # Install frontend dependencies
 bun install
 
 # Install backend dependencies
 cd backend && uv sync --frozen && cd ..
-
-# Set up Flower framework (optional)
-cd flower/framework && pip install -e . && cd ../..
 ```
 
 ## Code Formatting
@@ -131,8 +120,8 @@ You can pass features to any `tauri` CLI command by adding a `--` separator —
 everything after it is forwarded to `cargo`:
 
 ```sh
-# Run the app with libsql support enabled
-bun tauri dev -- --features libsql
+# Run the app with default features
+bun tauri dev
 
 # Build a production bundle with all optional features
 bun tauri build -- --features all
@@ -145,6 +134,13 @@ Note: when a feature is not compiled in, its corresponding commands are
 omitted from the binary. The renderer detects that automatically through the
 `capabilities` command we added, so no runtime errors occur — the feature is
 simply unavailable in the UI.
+
+## Run Android
+
+```sh
+# Libsql will cause build errors when compiling for Android
+bun tauri android dev -- --no-default-features --features native_fetch
+```
 
 ## Run Rust Examples
 
