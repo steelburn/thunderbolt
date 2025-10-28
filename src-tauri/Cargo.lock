@@ -6438,7 +6438,7 @@ dependencies = [
 
 [[package]]
 name = "thunderbolt"
-version = "0.1.2"
+version = "0.1.5"
 dependencies = [
  "anyhow",
  "serde",

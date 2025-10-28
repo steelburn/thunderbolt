@@ -4,7 +4,6 @@ import { createProxyRoutes } from './proxy'
 
 describe('Proxy Routes', () => {
   let app: Elysia
-  let fetchSpy: ReturnType<typeof spyOn>
   let consoleSpy: ReturnType<typeof spyOn>
   let mockFetch: ReturnType<typeof mock>
 
@@ -26,15 +25,14 @@ describe('Proxy Routes', () => {
     // Suppress console output during tests
     consoleSpy = spyOn(console, 'error').mockImplementation(() => {})
 
-    // Mock global fetch
+    // Create mock fetch
     mockFetch = mock(() => Promise.resolve(createMockResponse('test content')))
-    fetchSpy = spyOn(global, 'fetch').mockImplementation(mockFetch as any)
 
-    app = new Elysia().use(createProxyRoutes())
+    // Inject mock fetch into routes
+    app = new Elysia().use(createProxyRoutes(mockFetch as unknown as typeof fetch))
   })
 
   afterAll(() => {
-    fetchSpy?.mockRestore()
     consoleSpy?.mockRestore()
   })
 
@@ -139,6 +137,44 @@ describe('Proxy Routes', () => {
       expect(body).toBe('Invalid URL provided')
     })
 
+    it('should return 400 when URL has malformed encoding', async () => {
+      // This URL has a % not followed by valid hex digits, which will cause decodeURIComponent to throw
+      const malformedUrl = 'https://example.com/%ZZ'
+
+      const response = await app.handle(new Request(`http://localhost/proxy/${malformedUrl}`, { method: 'GET' }))
+
+      expect(response.status).toBe(400)
+      expect(mockFetch).not.toHaveBeenCalled()
+
+      const body = await response.text()
+      expect(body).toBe('Invalid URL encoding')
+    })
+
+    it('should handle URL-encoded target URLs', async () => {
+      const targetUrl = 'https://example.com/favicon.ico?v=2'
+      const encodedTargetUrl = encodeURIComponent(targetUrl)
+      const mockBody = 'favicon content'
+
+      mockFetch.mockImplementation(() => Promise.resolve(createMockResponse(mockBody)))
+
+      const response = await app.handle(
+        new Request(`http://localhost/proxy/${encodedTargetUrl}`, {
+          method: 'GET',
+        }),
+      )
+
+      expect(response.status).toBe(200)
+      expect(mockFetch).toHaveBeenCalledWith(
+        targetUrl,
+        expect.objectContaining({
+          method: 'GET',
+        }),
+      )
+
+      const body = await response.text()
+      expect(body).toBe(mockBody)
+    })
+
     it('should handle non-200 responses from proxied URL', async () => {
       const targetUrl = 'https://example.com/not-found'
 
@@ -224,12 +260,13 @@ describe('Proxy Routes', () => {
       expect(mockFetch).toHaveBeenCalledWith(httpsUrl, expect.any(Object))
     })
 
-    it('should handle URLs with special characters', async () => {
-      const targetUrl = 'https://example.com/path/with%20spaces/file.ico'
+    it('should handle URLs with special characters when properly encoded', async () => {
+      const targetUrl = 'https://example.com/path/with spaces/file.ico'
+      const encodedTargetUrl = encodeURIComponent(targetUrl)
 
       mockFetch.mockImplementation(() => Promise.resolve(createMockResponse('content')))
 
-      const response = await app.handle(new Request(`http://localhost/proxy/${targetUrl}`, { method: 'GET' }))
+      const response = await app.handle(new Request(`http://localhost/proxy/${encodedTargetUrl}`, { method: 'GET' }))
 
       expect(response.status).toBe(200)
       expect(mockFetch).toHaveBeenCalledWith(targetUrl, expect.any(Object))

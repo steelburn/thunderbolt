@@ -6,7 +6,7 @@ import { Elysia } from 'elysia'
  * General-purpose proxy routes
  * Proxies GET requests to external URLs with CORS headers
  */
-export const createProxyRoutes = () => {
+export const createProxyRoutes = (fetchFn: typeof fetch = globalThis.fetch) => {
   const settings = getSettings()
 
   return new Elysia({
@@ -25,7 +25,17 @@ export const createProxyRoutes = () => {
       // Extract the target URL from the path (everything after /proxy/)
       // Remove the prefix path to get the target URL
       const pathParts = url.pathname.split('/proxy/')
-      const pathOnly = pathParts[pathParts.length - 1]
+      let pathOnly: string
+      try {
+        pathOnly = decodeURIComponent(pathParts[pathParts.length - 1])
+      } catch {
+        ctx.set.status = 400
+        return new Response('Invalid URL encoding', {
+          headers: {
+            'Content-Type': 'text/plain',
+          },
+        })
+      }
       const targetUrl = pathOnly + url.search
 
       if (!targetUrl) {
@@ -51,7 +61,7 @@ export const createProxyRoutes = () => {
 
       try {
         // Make the proxied request
-        const response = await fetch(targetUrl, {
+        const response = await fetchFn(targetUrl, {
           method: 'GET',
           headers: {
             'User-Agent': 'Mozilla/5.0 (compatible; ThunderboltBot/1.0)',

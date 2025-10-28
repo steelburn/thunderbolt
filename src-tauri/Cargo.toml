@@ -22,7 +22,7 @@ email = [
     "dep:thunderbolt-email",
     "dep:thunderbolt-imap-client",
     "dep:thunderbolt-imap-sync",
-    "libsql"
+    "libsql",
 ]
 embeddings = ["dep:thunderbolt-embeddings"]
 bridge = ["dep:thunderbolt-bridge"]
@@ -36,7 +36,7 @@ members = [
     "thunderbolt_embeddings",
     "thunderbolt_bridge",
     "thunderbolt_libsql",
-    "thunderbolt_email"
+    "thunderbolt_email",
 ]
 
 [workspace.dependencies]
@@ -44,7 +44,7 @@ members = [
 # See: https://github.com/thunderbird/libsql/commit/91d0ff37dc37f2397b39662b0727b500a93fdb32
 libsql = { version = "0.9.20", default-features = false, features = [
     "core",
-    "encryption"
+    "encryption",
 ] }
 anyhow = "1.0.99"
 serde = { version = "1.0.219", features = ["derive"] }
@@ -87,7 +87,7 @@ incremental = true # Compile your binary in smaller steps.
 
 [profile.release]
 codegen-units = 1 # Allows LLVM to perform better optimization.
-lto = true # Enables link-time-optimizations.
-opt-level = "s" # Prioritizes small binary size. Use `3` if you prefer speed.
-panic = "abort" # Higher performance by disabling panic handlers.
-strip = true # Ensures debug symbols are removed.
+lto = true        # Enables link-time-optimizations.
+opt-level = "s"   # Prioritizes small binary size. Use `3` if you prefer speed.
+panic = "abort"   # Higher performance by disabling panic handlers.
+strip = true      # Ensures debug symbols are removed.
