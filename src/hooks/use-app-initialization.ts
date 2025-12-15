@@ -78,6 +78,18 @@ const executeInitializationSteps = async (httpClient?: HttpClient): Promise<Hand
     }
   }
 
+  // Step 2.5: Wait for PowerSync first sync before reconciling defaults
+  // This ensures we have the latest data from the cloud before checking defaults
+  const powerSyncDb = DatabaseSingleton.instance.powerSyncDatabase
+  if (powerSyncDb) {
+    try {
+      await powerSyncDb.waitForFirstSync()
+    } catch (error) {
+      // Non-fatal - continue with local data if sync fails
+      console.warn('[Init] First sync failed or timed out, continuing with local data:', error)
+    }
+  }
+
   // Step 3: Reconcile default settings
   try {
     await reconcileDefaults(DatabaseSingleton.instance.db)

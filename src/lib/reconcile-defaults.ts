@@ -41,9 +41,13 @@ export const reconcileDefaultsForTable = async <T extends { defaultHash: string 
 
       if (!existing.defaultHash) {
         // No defaultHash - set it to the default hash to enable modification tracking
-        await db.update(table).set({ defaultHash: defaultHashValue }).where(eq(table[keyField], keyValue))
-      } else if (currentHash === existing.defaultHash) {
-        // Unmodified - safe to update to new default
+        // Only update if the current content matches what we expect for defaults
+        if (currentHash === defaultHashValue) {
+          await db.update(table).set({ defaultHash: defaultHashValue }).where(eq(table[keyField], keyValue))
+        }
+      } else if (currentHash === existing.defaultHash && defaultHashValue !== existing.defaultHash) {
+        // User hasn't modified the data AND the default template has changed
+        // Safe to update to new default
         await db
           .update(table)
           .set({
@@ -52,7 +56,8 @@ export const reconcileDefaultsForTable = async <T extends { defaultHash: string 
           })
           .where(eq(table[keyField], keyValue))
       }
-      // If hashes don't match, user has modified (including soft-delete) - skip update
+      // If currentHash !== existing.defaultHash, user has modified - skip update
+      // If defaultHashValue === existing.defaultHash, nothing changed - skip update
     }
   }
 }

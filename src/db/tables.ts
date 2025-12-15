@@ -14,6 +14,7 @@ import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
  */
 export const settingsTable = sqliteTable('settings', {
   key: text('id').primaryKey().notNull(),
+  userId: text('user_id'),
   value: text('value'),
   updatedAt: integer('updated_at').default(sql`(unixepoch())`),
   defaultHash: text('default_hash'),
@@ -21,6 +22,7 @@ export const settingsTable = sqliteTable('settings', {
 
 export const chatThreadsTable = sqliteTable('chat_threads', {
   id: text('id').primaryKey().notNull().unique(),
+  userId: text('user_id'),
   title: text('title'),
   isEncrypted: integer('is_encrypted').default(0).notNull(),
   triggeredBy: text('triggered_by').references(() => promptsTable.id, { onDelete: 'set null' }),
@@ -30,6 +32,7 @@ export const chatThreadsTable = sqliteTable('chat_threads', {
 
 export const chatMessagesTable = sqliteTable('chat_messages', {
   id: text('id').primaryKey().notNull().unique(),
+  userId: text('user_id'),
   content: text('content').notNull(),
   role: text('role').notNull().$type<UIMessage['role']>(),
   parts: text('parts', { mode: 'json' }).$type<UIMessage['parts']>(),
@@ -44,6 +47,7 @@ export const chatMessagesTable = sqliteTable('chat_messages', {
 
 export const tasksTable = sqliteTable('tasks', {
   id: text('id').primaryKey().notNull().unique(),
+  userId: text('user_id'),
   item: text('item').notNull(),
   order: integer('order').notNull().default(0),
   isComplete: integer('is_complete').notNull().default(0),
@@ -52,6 +56,7 @@ export const tasksTable = sqliteTable('tasks', {
 
 export const modelsTable = sqliteTable('models', {
   id: text('id').primaryKey().notNull().unique(),
+  userId: text('user_id'),
   provider: text('provider', {
     enum: ['openai', 'custom', 'openrouter', 'thunderbolt', 'anthropic'],
   }).notNull(),
@@ -73,6 +78,7 @@ export const modelsTable = sqliteTable('models', {
 
 export const mcpServersTable = sqliteTable('mcp_servers', {
   id: text('id').primaryKey().notNull().unique(),
+  userId: text('user_id'),
   name: text('name').notNull(),
   type: text('type', { enum: ['http', 'stdio'] })
     .notNull()
@@ -87,6 +93,7 @@ export const mcpServersTable = sqliteTable('mcp_servers', {
 
 export const promptsTable = sqliteTable('prompts', {
   id: text('id').primaryKey().notNull().unique(),
+  userId: text('user_id'),
   title: text('title'),
   prompt: text('prompt').notNull(),
   modelId: text('model_id')
@@ -98,6 +105,7 @@ export const promptsTable = sqliteTable('prompts', {
 
 export const triggersTable = sqliteTable('triggers', {
   id: text('id').primaryKey().notNull().unique(),
+  userId: text('user_id'),
   triggerType: text('trigger_type', { enum: ['time'] }).notNull(),
   triggerTime: text('trigger_time'),
   promptId: text('prompt_id')

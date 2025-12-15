@@ -61,7 +61,7 @@ export class PowerSyncDatabaseWrapper implements DatabaseInterface {
       schema: drizzleSchema,
     })
 
-    console.info(`PowerSync database initialized with filename: ${dbFilename}`)
+    console.warn(`PowerSync database initialized with filename: ${dbFilename}`)
 
     // If config is set, connect to the PowerSync service
     if (this.config) {
@@ -84,7 +84,6 @@ export class PowerSyncDatabaseWrapper implements DatabaseInterface {
 
     this.connector = new PowerSyncConnector(this.config)
     await this.powerSyncDb.connect(this.connector)
-
     console.info('PowerSync connected to sync service')
   }
 
