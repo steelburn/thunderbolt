@@ -110,7 +110,17 @@ const initDatabase = async (filename: string): Promise<void> => {
   }
 
   // Load cr-sqlite WASM module
-  const sqlite3 = await initWasm()
+  //
+  // Why we copy crsqlite.wasm to the public folder:
+  // 1. The @vlcn.io/crsqlite-wasm package doesn't export the .wasm file in its package.json
+  //    exports, so Vite's ?url import syntax fails with "Missing specifier" error
+  // 2. Web Workers have a different base URL context, so relative imports don't resolve
+  //    correctly when the worker is bundled
+  // 3. Serving from /public ensures the file is available at a known, absolute URL
+  //    that works in both development (Vite dev server) and production builds
+  // 4. The postinstall script in package.json copies the file automatically after
+  //    `bun install` to keep it in sync with the package version
+  const sqlite3 = await initWasm(() => '/crsqlite.wasm')
 
   // For in-memory databases, pass undefined to skip IndexedDB persistence
   const isInMemory = filename === ':memory:'
