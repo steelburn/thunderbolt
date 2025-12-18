@@ -1,4 +1,5 @@
 import type { Auth } from '@/auth/elysia-plugin'
+import { user } from '@/db/auth-schema'
 import type { db as DbType } from '@/db/client'
 import { and, eq, gt } from 'drizzle-orm'
 import { Elysia, t } from 'elysia'
@@ -30,16 +31,35 @@ const MOCK_USER = {
 }
 
 /**
+ * Ensure mock user exists in database (for development/testing)
+ */
+const ensureMockUserExists = async (database: typeof DbType) => {
+  const existing = await database.select({ id: user.id }).from(user).where(eq(user.id, MOCK_USER.id)).limit(1)
+
+  if (existing.length === 0) {
+    await database.insert(user).values({
+      id: MOCK_USER.id,
+      email: MOCK_USER.email,
+      name: MOCK_USER.name,
+      emailVerified: true,
+    })
+  }
+}
+
+/**
  * Helper to get authenticated user from request
  * Currently returns mock user for testing - bypasses real auth
  */
-const getAuthenticatedUser = async (_auth: Auth, _headers: Headers) => {
+const getAuthenticatedUser = async (database: typeof DbType, _auth: Auth, _headers: Headers) => {
   // TODO: Restore real authentication once CORS is resolved
   // const session = await auth.api.getSession({ headers })
   // if (!session) {
   //   return null
   // }
   // return session.user
+
+  // Ensure mock user exists for development
+  await ensureMockUserExists(database)
   return MOCK_USER
 }
 
@@ -64,7 +84,7 @@ export const createSyncRoutes = (database: typeof DbType, auth: Auth) => {
       .post(
         '/push',
         async ({ body, request, set }) => {
-          const user = await getAuthenticatedUser(auth, request.headers)
+          const user = await getAuthenticatedUser(database, auth, request.headers)
           if (!user) {
             set.status = 401
             return { success: false, error: 'Unauthorized' }
@@ -88,6 +108,7 @@ export const createSyncRoutes = (database: typeof DbType, auth: Auth) => {
           }
 
           // Insert all changes
+          // Note: val is already JSON-encoded from cr-sqlite, store it as-is
           const insertedChanges = await database
             .insert(syncChanges)
             .values(
@@ -97,7 +118,7 @@ export const createSyncRoutes = (database: typeof DbType, auth: Auth) => {
                 tableName: change.table,
                 pk: change.pk,
                 cid: change.cid,
-                val: change.val !== undefined ? JSON.stringify(change.val) : null,
+                val: change.val !== null && change.val !== undefined ? String(change.val) : null,
                 colVersion: BigInt(change.col_version),
                 dbVersion: BigInt(change.db_version),
                 cl: change.cl,
@@ -151,7 +172,7 @@ export const createSyncRoutes = (database: typeof DbType, auth: Auth) => {
       .get(
         '/pull',
         async ({ query, request, set }) => {
-          const user = await getAuthenticatedUser(auth, request.headers)
+          const user = await getAuthenticatedUser(database, auth, request.headers)
           if (!user) {
             set.status = 401
             return { changes: [], serverVersion: '0', error: 'Unauthorized' }
@@ -192,11 +213,12 @@ export const createSyncRoutes = (database: typeof DbType, auth: Auth) => {
           const maxServerVersion = changes.length > 0 ? Math.max(...changes.map((c) => c.id)) : sinceVersion
 
           // Transform to serialized format
+          // Note: val is stored as-is (already JSON-encoded from cr-sqlite)
           const serializedChanges = changes.map((change) => ({
             table: change.table,
             pk: change.pk,
             cid: change.cid,
-            val: change.val ? JSON.parse(change.val) : null,
+            val: change.val,
             col_version: change.col_version.toString(),
             db_version: change.db_version.toString(),
             site_id: change.site_id,
