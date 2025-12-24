@@ -1,8 +1,8 @@
-import type { Settings } from '@/config/settings'
 import * as settingsModule from '@/config/settings'
 import type { ConsoleSpies } from '@/test-utils/console-spies'
 import { setupConsoleSpy } from '@/test-utils/console-spies'
 import { createTestDb } from '@/test-utils/db'
+import { createMockSettings } from '@/test-utils/mock-settings'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, spyOn } from 'bun:test'
 import { createApp } from '../index'
 
@@ -32,30 +32,7 @@ describe('Main Routes', () => {
     consoleSpies = setupConsoleSpy()
 
     // Mock settings for analytics route
-    getSettingsSpy = spyOn(settingsModule, 'getSettings').mockReturnValue({
-      fireworksApiKey: 'test-api-key',
-      mistralApiKey: '',
-      anthropicApiKey: '',
-      exaApiKey: '',
-      thunderboltInferenceUrl: '',
-      thunderboltInferenceApiKey: '',
-      monitoringToken: '',
-      googleClientId: '',
-      googleClientSecret: '',
-      microsoftClientId: '',
-      microsoftClientSecret: '',
-      logLevel: 'INFO',
-      port: 8000,
-      posthogHost: 'https://us.i.posthog.com',
-      posthogApiKey: 'ph_test',
-      corsOrigins: 'http://localhost:1420',
-      corsOriginRegex: '',
-      corsAllowCredentials: true,
-      corsAllowMethods: 'GET,POST,PUT,DELETE,PATCH,OPTIONS',
-      corsAllowHeaders:
-        'Content-Type,Authorization,Accept,Accept-Encoding,Accept-Language,Cache-Control,User-Agent,X-Requested-With',
-      corsExposeHeaders: 'mcp-session-id',
-    } satisfies Settings)
+    getSettingsSpy = spyOn(settingsModule, 'getSettings').mockReturnValue(createMockSettings())
   })
 
   beforeEach(async () => {

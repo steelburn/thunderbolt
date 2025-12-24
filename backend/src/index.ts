@@ -6,6 +6,8 @@ import { createMicrosoftAuthRoutes } from '@/auth/microsoft'
 import { createLoggerMiddleware, createStandaloneLogger } from '@/config/logger'
 import { getCorsOriginsList, getSettings } from '@/config/settings'
 import { createInferenceRoutes } from '@/inference/routes'
+import { createFullDashboardRoutes } from '@/langsmith/dashboard'
+import { isLangSmithConfigured, getLangSmithProject } from '@/langsmith/client'
 import { createErrorHandlingMiddleware } from '@/middleware/error-handling'
 import { createHttpLoggingMiddleware } from '@/middleware/http-logging'
 import { createPostHogRoutes } from '@/posthog/routes'
@@ -78,6 +80,7 @@ export const createApp = async (deps?: AppDeps) => {
       .use(createProToolsRoutes(fetchFn))
       .use(createInferenceRoutes())
       .use(createPostHogRoutes(fetchFn))
+      .use(createFullDashboardRoutes())
   )
 }
 
@@ -131,6 +134,24 @@ const startServer = async () => {
               swaggerUrl: `http://localhost:${settings.port}/v1/swagger`,
             },
             '📚 Swagger documentation available',
+          )
+        }
+
+        // Log LangSmith status
+        if (isLangSmithConfigured()) {
+          log.info(
+            {
+              project: getLangSmithProject(),
+              dashboardUrl: `http://localhost:${settings.port}/v1/eval/dashboard`,
+            },
+            '🔬 LangSmith tracing ENABLED',
+          )
+        } else {
+          log.info(
+            {
+              reason: !settings.langsmithApiKey ? 'LANGSMITH_API_KEY not set' : 'LANGSMITH_TRACING_ENABLED not true',
+            },
+            '🔬 LangSmith tracing DISABLED',
           )
         }
       },

@@ -1,6 +1,7 @@
 import * as settingsModule from '@/config/settings'
 import type { ConsoleSpies } from '@/test-utils/console-spies'
 import { setupConsoleSpy } from '@/test-utils/console-spies'
+import { createMockSettings } from '@/test-utils/mock-settings'
 import { afterAll, beforeAll, describe, expect, it, mock, spyOn } from 'bun:test'
 import { Elysia } from 'elysia'
 import { createGoogleAuthRoutes } from './google'
@@ -22,29 +23,17 @@ describe('Authentication Routes', () => {
     consoleSpies = setupConsoleSpy()
 
     // Mock settings
-    getSettingsSpy = spyOn(settingsModule, 'getSettings').mockReturnValue({
-      fireworksApiKey: '',
-      mistralApiKey: '',
-      anthropicApiKey: '',
-      exaApiKey: '',
-      thunderboltInferenceUrl: '',
-      thunderboltInferenceApiKey: '',
-      monitoringToken: '',
-      googleClientId: 'test-google-client-id',
-      googleClientSecret: 'test-google-secret',
-      microsoftClientId: 'test-microsoft-client-id',
-      microsoftClientSecret: 'test-microsoft-secret',
-      logLevel: 'INFO',
-      port: 8000,
-      posthogHost: 'https://us.i.posthog.com',
-      posthogApiKey: '',
-      corsOrigins: 'http://localhost:1420',
-      corsOriginRegex: '',
-      corsAllowCredentials: true,
-      corsAllowMethods: 'GET,POST,PUT,DELETE,PATCH,OPTIONS',
-      corsAllowHeaders: 'Content-Type,Authorization',
-      corsExposeHeaders: '',
-    })
+    getSettingsSpy = spyOn(settingsModule, 'getSettings').mockReturnValue(
+      createMockSettings({
+        googleClientId: 'test-google-client-id',
+        googleClientSecret: 'test-google-secret',
+        microsoftClientId: 'test-microsoft-client-id',
+        microsoftClientSecret: 'test-microsoft-secret',
+        corsAllowHeaders: 'Content-Type,Authorization',
+        corsExposeHeaders: '',
+        posthogApiKey: '',
+      }),
+    )
 
     // Create mock fetch
     mockFetch = mock(() => Promise.resolve(createMockOAuthResponse()))

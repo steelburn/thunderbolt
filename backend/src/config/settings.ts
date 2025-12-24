@@ -29,6 +29,12 @@ const settingsSchema = z.object({
   posthogHost: z.string().default('https://us.i.posthog.com'),
   posthogApiKey: z.string().default(''),
 
+  // LangSmith settings (prompt evaluation)
+  langsmithApiKey: z.string().default(''),
+  langsmithProject: z.string().default('thunderbolt'),
+  langsmithTracingEnabled: z.boolean().default(false),
+  langsmithSamplingRate: z.coerce.number().min(0).max(1).default(1.0),
+
   // CORS settings
   corsOrigins: z.string().default('http://localhost:1420'),
   corsOriginRegex: z
@@ -66,6 +72,10 @@ const parseSettings = (): Settings => {
     port: process.env.PORT || '8000',
     posthogHost: process.env.POSTHOG_HOST || 'https://us.i.posthog.com',
     posthogApiKey: process.env.POSTHOG_API_KEY || '',
+    langsmithApiKey: process.env.LANGSMITH_API_KEY || '',
+    langsmithProject: process.env.LANGSMITH_PROJECT || 'thunderbolt',
+    langsmithTracingEnabled: process.env.LANGSMITH_TRACING_ENABLED === 'true',
+    langsmithSamplingRate: process.env.LANGSMITH_SAMPLING_RATE || '1.0',
     corsOrigins: process.env.CORS_ORIGINS || 'http://localhost:1420',
     corsOriginRegex:
       process.env.CORS_ORIGIN_REGEX ||

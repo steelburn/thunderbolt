@@ -1,3 +1,5 @@
+import { createTracedSSEStream, startChatTrace } from '@/langsmith/streaming'
+import { isLangSmithConfigured } from '@/langsmith/client'
 import { isPostHogConfigured } from '@/posthog/client'
 import { createSSEStreamFromCompletion } from '@/utils/streaming'
 import type { OpenAI as PostHogOpenAI } from '@posthog/ai'
@@ -54,6 +56,18 @@ export const createInferenceRoutes = () => {
     console.info(`Routing model "${body.model}" to ${provider} provider`)
 
     try {
+      const startTime = Date.now()
+
+      // Start LangSmith trace if configured
+      const traceContext = isLangSmithConfigured()
+        ? await startChatTrace(body.messages, {
+            model: body.model,
+            provider,
+            hasTools: !!body.tools,
+            temperature: body.temperature,
+          })
+        : null
+
       const completion = await (client as PostHogOpenAI).chat.completions.create({
         model: internalName,
         messages: body.messages,
@@ -72,7 +86,10 @@ export const createInferenceRoutes = () => {
         }),
       })
 
-      const stream = createSSEStreamFromCompletion(completion, body.model)
+      // Use traced streaming if LangSmith is configured
+      const stream = traceContext
+        ? createTracedSSEStream(completion, traceContext, startTime)
+        : createSSEStreamFromCompletion(completion, body.model)
 
       return new Response(stream, {
         headers: {
