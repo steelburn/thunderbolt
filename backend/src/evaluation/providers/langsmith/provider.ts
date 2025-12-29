@@ -21,6 +21,8 @@ import type {
   Trace,
   SuiteResult,
   EvaluationConfig,
+  TraceEvaluationConfig,
+  TraceEvaluationResult,
   TestResult,
   EvalScore,
 } from '../../core'
@@ -504,6 +506,189 @@ export class LangSmithProvider implements Provider {
       provider: 'langsmith',
       datasetRef,
       url,
+    }
+  }
+
+  /**
+   * Run trace evaluation by attaching feedback to existing production runs
+   *
+   * This follows LangSmith's "online evaluation" pattern:
+   * - Evaluates existing production traces WITHOUT re-executing
+   * - Attaches feedback scores directly to the original runs using createFeedback()
+   * - Results appear in LangSmith UI attached to the original traces
+   */
+  async runTraceEvaluation<TOutput, TExpected>(
+    config: TraceEvaluationConfig<TOutput, TExpected>,
+  ): Promise<TraceEvaluationResult> {
+    if (!this.client) {
+      throw new Error('LangSmithProvider not initialized. Call initialize() first.')
+    }
+
+    const { name, traces, evaluators, verbose = false } = config
+
+    console.log('')
+    console.log('═'.repeat(60))
+    console.log(`🔍 ${name.toUpperCase()}`)
+    console.log('═'.repeat(60))
+    console.log(`Traces: ${traces.length}`)
+    console.log(`Evaluators: ${evaluators.length}`)
+    console.log(`Mode: Online evaluation (feedback attached to original runs)`)
+    console.log('')
+
+    const results: TraceEvaluationResult['results'] = []
+    const scoresByEvaluator: Record<string, number[]> = {}
+
+    let completed = 0
+    const total = traces.length
+
+    for (const trace of traces) {
+      const traceScores: Record<string, number> = {}
+      let hasError = false
+
+      // Build output object for evaluators
+      const output = {
+        answer: trace.output.content,
+        content: trace.output.content,
+        toolCalls: (trace.output.toolCalls || []).map((tc) => ({
+          tool: tc.name,
+          arguments: typeof tc.arguments === 'string' ? JSON.parse(tc.arguments || '{}') : tc.arguments,
+          result: tc.result || '',
+        })),
+        turnCount: 1,
+        latencyMs: trace.latencyMs,
+        status: trace.error ? 'error' : 'completed',
+        error: trace.error,
+      } as TOutput
+
+      // Build test case for evaluators
+      const testCase = {
+        id: trace.id,
+        name: trace.input.question || 'Trace',
+        source: 'trace' as const,
+        input: trace.input,
+        expected: {} as TExpected,
+        metadata: trace.metadata,
+      }
+
+      // Run each evaluator and attach feedback
+      for (const evaluator of evaluators) {
+        try {
+          const ctx = {
+            testCase,
+            output,
+            latencyMs: trace.latencyMs,
+          }
+
+          // Check if evaluator should be skipped
+          if (evaluator.shouldSkip?.(ctx)) {
+            if (verbose) {
+              console.log(`    ⏭️  ${evaluator.name}: skipped`)
+            }
+            continue
+          }
+
+          const score = await evaluator.evaluate(ctx)
+
+          traceScores[evaluator.name] = score.value
+
+          if (!scoresByEvaluator[evaluator.name]) {
+            scoresByEvaluator[evaluator.name] = []
+          }
+          scoresByEvaluator[evaluator.name].push(score.value)
+
+          // Attach feedback to the original run in LangSmith
+          await this.client.createFeedback(trace.id, evaluator.name, {
+            score: score.value,
+            comment: score.reasoning,
+            value: score.passed ? 'pass' : 'fail',
+          })
+
+          if (verbose) {
+            const icon = score.value >= 0.7 ? '🟢' : score.value >= 0.4 ? '🟡' : '🔴'
+            console.log(`    ${icon} ${evaluator.name}: ${(score.value * 100).toFixed(0)}%`)
+          }
+        } catch (e) {
+          hasError = true
+          const error = e instanceof Error ? e.message : 'Unknown error'
+          if (verbose) {
+            console.log(`    ❌ ${evaluator.name}: ${error}`)
+          }
+        }
+      }
+
+      // Calculate overall score for this trace
+      const scoreValues = Object.values(traceScores)
+      const avgScore = scoreValues.length > 0 ? scoreValues.reduce((a, b) => a + b, 0) / scoreValues.length : 0
+      const passed = avgScore >= 0.5
+
+      // Attach overall feedback
+      if (scoreValues.length > 0) {
+        await this.client.createFeedback(trace.id, 'overall_score', {
+          score: avgScore,
+          comment: `Evaluated with ${evaluators.length} evaluators`,
+          value: passed ? 'pass' : 'fail',
+        })
+      }
+
+      completed++
+      const statusIcon = hasError ? '❌' : passed ? '✅' : '⚠️'
+      const traceName = (trace.input.question || trace.id).slice(0, 40)
+      console.log(`[${completed}/${total}] ${statusIcon} ${traceName.padEnd(40)} ${(avgScore * 100).toFixed(0)}%`)
+
+      results.push({
+        traceId: trace.id,
+        scores: traceScores,
+        passed,
+        error: hasError ? 'Evaluation error' : undefined,
+      })
+    }
+
+    // Calculate summary
+    const passed = results.filter((r) => r.passed).length
+    const failed = results.filter((r) => !r.passed && !r.error).length
+    const errored = results.filter((r) => !!r.error).length
+    const allScores = results.flatMap((r) => Object.values(r.scores))
+    const avgScore = allScores.length > 0 ? allScores.reduce((a, b) => a + b, 0) / allScores.length : 0
+
+    const avgByEvaluator: Record<string, number> = {}
+    for (const [name, scores] of Object.entries(scoresByEvaluator)) {
+      avgByEvaluator[name] = scores.reduce((a, b) => a + b, 0) / scores.length
+    }
+
+    // Print summary
+    console.log('')
+    console.log('═'.repeat(60))
+    console.log('📊 RESULTS')
+    console.log('═'.repeat(60))
+    console.log(`Passed: ${passed}/${total} (${((passed / total) * 100).toFixed(0)}%)`)
+    console.log(`Avg Score: ${(avgScore * 100).toFixed(1)}%`)
+    if (errored > 0) {
+      console.log(`Errors: ${errored}`)
+    }
+
+    console.log('')
+    console.log('Scores by evaluator:')
+    for (const [evalName, avg] of Object.entries(avgByEvaluator)) {
+      const icon = avg >= 0.7 ? '🟢' : avg >= 0.4 ? '🟡' : '🔴'
+      console.log(`  ${icon} ${evalName}: ${(avg * 100).toFixed(0)}%`)
+    }
+
+    const projectName = process.env.LANGSMITH_PROJECT || 'default'
+    console.log('')
+    console.log(
+      `📈 View feedback in LangSmith: https://smith.langchain.com/projects/${encodeURIComponent(projectName)}`,
+    )
+    console.log(`   Feedback attached to ${total} original production traces`)
+    console.log('')
+
+    return {
+      total,
+      passed,
+      failed,
+      errored,
+      avgScore,
+      scoresByEvaluator: avgByEvaluator,
+      results,
     }
   }
 }
