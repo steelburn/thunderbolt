@@ -18,10 +18,19 @@ bun run eval quality --provider langsmith --from-traces --limit 10
 
 # Production traces - attaches feedback to original runs (no experiment)
 bun run eval traces --provider langsmith --limit 50
+bun run eval traces --provider helicone --limit 50
 
 # Fast mode (skip LLM judges)
 bun run eval behavioral --provider console --fast
 ```
+
+### Available Providers
+
+| Provider    | Traces | Experiments | Notes                                |
+| ----------- | ------ | ----------- | ------------------------------------ |
+| `console`   | ❌     | ❌          | Output only                          |
+| `langsmith` | ✅     | ✅          | Full integration                     |
+| `helicone`  | ✅     | ❌          | Trace eval only (scores on requests) |
 
 ### Available Models
 
@@ -145,6 +154,32 @@ Edit the appropriate dataset file:
 
 ---
 
+## Session/Conversation Tracking
+
+Multi-turn conversations are tracked using provider-specific mechanisms.
+
+### Request Headers
+
+| Header              | Purpose                                 | Example                                |
+| ------------------- | --------------------------------------- | -------------------------------------- |
+| `X-Conversation-Id` | Conversation UUID                       | `550e8400-e29b-41d4-a716-446655440000` |
+| `X-Turn-Number`     | Turn position (optional, defaults to 1) | `3`                                    |
+
+### Provider Mapping
+
+| Provider  | How It's Used                         |
+| --------- | ------------------------------------- |
+| LangSmith | Stored in `session_id` metadata field |
+| Helicone  | Sent as `Helicone-Session-*` headers  |
+
+### Benefits
+
+- Evaluate entire conversations, not isolated messages
+- Track model behavior across multi-turn interactions
+- Group related requests in observability dashboards
+
+---
+
 ## Source Tagging
 
 Traces are tagged to distinguish production vs evaluation data.
@@ -255,6 +290,7 @@ type Provider = {
 | ------------------- | ------------------ | ------------------------------------- |
 | `LANGSMITH_API_KEY` | langsmith provider | -                                     |
 | `LANGSMITH_PROJECT` | trace fetching     | -                                     |
+| `HELICONE_API_KEY`  | helicone provider  | -                                     |
 | `LLM_JUDGE_MODEL`   | LLM evaluators     | `anthropic:claude-3-5-haiku-20241022` |
 | `BACKEND_URL`       | live evaluation    | `http://localhost:8000`               |
 | `EVAL_MODEL`        | model to test      | `mistral-medium-3.1`                  |

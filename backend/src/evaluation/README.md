@@ -195,6 +195,54 @@ bun run eval quality --provider langsmith --from-traces --limit 10
 
 ---
 
+## Session/Conversation Tracking
+
+The framework tracks multi-turn conversations using provider-specific session mechanisms. This enables:
+
+- **Conversation-level evaluation**: Assess model behavior across multiple turns
+- **Grouped observability**: View related requests together in dashboards
+- **Pattern detection**: Identify issues that only appear in longer conversations
+
+### Request Headers
+
+Clients should include these headers with each request:
+
+| Header              | Required | Purpose                    | Example                                |
+| ------------------- | -------- | -------------------------- | -------------------------------------- |
+| `X-Conversation-Id` | Optional | Conversation UUID          | `550e8400-e29b-41d4-a716-446655440000` |
+| `X-Turn-Number`     | Optional | Turn position (default: 1) | `3`                                    |
+
+### Provider Mapping
+
+| Provider      | Session Mechanism                                               |
+| ------------- | --------------------------------------------------------------- |
+| **LangSmith** | Stored in `session_id` metadata field, visible in trace details |
+| **Helicone**  | Sent as `Helicone-Session-*` headers, enables Sessions view     |
+
+### Example Client Usage
+
+```typescript
+// Frontend/client code
+const conversationId = crypto.randomUUID()
+let turnNumber = 0
+
+const sendMessage = async (messages: Message[]) => {
+  turnNumber++
+  const response = await fetch('/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Conversation-Id': conversationId,
+      'X-Turn-Number': String(turnNumber),
+    },
+    body: JSON.stringify({ model: 'sonnet-4.5', messages }),
+  })
+  return response
+}
+```
+
+---
+
 ## Source Tagging
 
 The framework automatically tags traces to distinguish between **production** traffic and **evaluation** runs.
@@ -247,11 +295,11 @@ const errors = await provider.fetchTraces({
 
 ### Provider Implementation
 
-| Provider             | Storage Location                                       | Filter Syntax                              |
-| -------------------- | ------------------------------------------------------ | ------------------------------------------ |
-| LangSmith            | `extra.metadata.source` + `extra.metadata.source_tags` | `eq(metadata_key, "source", "production")` |
-| Console              | N/A (not stored)                                       | N/A                                        |
-| PromptLayer (future) | TBD                                                    | TBD                                        |
+| Provider  | Storage Location                                       | Filter Syntax                              |
+| --------- | ------------------------------------------------------ | ------------------------------------------ |
+| LangSmith | `extra.metadata.source` + `extra.metadata.source_tags` | `eq(metadata_key, "source", "production")` |
+| Helicone  | `properties.source`                                    | `properties.source.equals: "evaluation"`   |
+| Console   | N/A (not stored)                                       | N/A                                        |
 
 **Note**: LangSmith SDK's `createRun()` TypeScript types don't include a `tags` field, so we store source information in `extra.metadata` which is fully supported.
 
@@ -287,9 +335,9 @@ bun run eval <suite> --provider <name> [options]
 
 ### Required Options
 
-| Option             | Description                              |
-| ------------------ | ---------------------------------------- |
-| `--provider`, `-p` | Provider to use (`langsmith`, `console`) |
+| Option             | Description                                          |
+| ------------------ | ---------------------------------------------------- |
+| `--provider`, `-p` | Provider to use (`langsmith`, `helicone`, `console`) |
 
 ### General Options
 
@@ -320,6 +368,20 @@ bun run eval <suite> --provider <name> [options]
 | `LLM_JUDGE_MODEL`   | Judge model       | `anthropic:claude-3-5-haiku-20241022` |
 | `LANGSMITH_API_KEY` | LangSmith API key | Required for langsmith                |
 | `LANGSMITH_PROJECT` | LangSmith project | Required for traces                   |
+| `HELICONE_API_KEY`  | Helicone API key  | Required for helicone                 |
+
+### Helicone Observability Integration
+
+When `HELICONE_API_KEY` is set, the backend automatically routes supported providers through Helicone:
+
+| Provider    | Helicone Support | Notes                       |
+| ----------- | ---------------- | --------------------------- |
+| Mistral     | ✅               | Via `mistral.helicone.ai`   |
+| Anthropic   | ✅               | Via `anthropic.helicone.ai` |
+| Fireworks   | ❌               | No Helicone proxy available |
+| Thunderbolt | ❌               | Internal service            |
+
+This enables observability for user conversations in Helicone without code changes.
 
 ### LLM Judge Models
 
@@ -366,6 +428,28 @@ bun run eval traces --provider langsmith --limit 100
 - ✅ Experiment tracking
 - ✅ Score/feedback storage
 - ✅ Trace fetching (production data)
+
+### Helicone Provider
+
+Integration with [Helicone](https://helicone.ai) for **trace evaluation only**.
+
+```bash
+export HELICONE_API_KEY=sk-...
+
+# Evaluate production traces (scores attached to original requests)
+bun run eval traces --provider helicone --limit 50
+```
+
+**Capabilities**:
+
+- ✅ Trace fetching (production data)
+- ✅ Score attachment to existing requests
+- ❌ Experiment creation (not supported - use LangSmith)
+- ❌ Dataset sync (not supported)
+
+> **Note**: For `behavioral` or `quality` evaluations (which execute the model fresh),
+> Helicone provider outputs to console only. There are no pre-existing requests to
+> attach scores to. Use LangSmith for full experiment tracking with fresh evaluations.
 
 ---
 
