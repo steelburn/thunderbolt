@@ -33,7 +33,7 @@ const MOCK_SESSION = {
  * Create an auth client instance with the given base URL
  * Includes platform header so backend can use deep links for mobile
  */
-const createAuthClientInstance = (cloudUrl: string) => {
+const _createAuthClientInstance = (cloudUrl: string) => {
   // Remove trailing /v1 if present since Better Auth adds /api/auth
   const baseURL = cloudUrl.replace(/\/v1$/, '')
   const platform = getPlatform()
@@ -51,7 +51,7 @@ const createAuthClientInstance = (cloudUrl: string) => {
   })
 }
 
-export type AuthClient = ReturnType<typeof createAuthClientInstance>
+export type AuthClient = ReturnType<typeof _createAuthClientInstance>
 export type Session = AuthClient['$Infer']['Session']
 export type User = Session['user']
 
