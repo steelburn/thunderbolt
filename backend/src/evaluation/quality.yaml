@@ -1,0 +1,385 @@
+# Quality Evaluation Tests
+# Tests the CORRECTNESS of model answers
+# Includes real-time queries that require tool usage
+#
+# OUTPUT FORMAT: Each response includes:
+#   TOOLS_CALLED: YES/NO
+#   TOOL_NAMES: (if YES) comma-separated list
+#   RESPONSE: the actual text response
+
+# =============================================================================
+# REAL-TIME INFORMATION (Requires Tool Usage)
+# =============================================================================
+
+- description: '[REALTIME] Weather forecast - MUST use tools'
+  vars:
+    query: What is the weather forecast for this week in Paris?
+  assert:
+    - type: llm-rubric
+      value: |
+        CRITICAL: Weather forecasts require current data from tools.
+
+        Check:
+        - TOOLS_CALLED should be YES
+        - Response should contain actual weather data for Paris
+        - Should include temperature, conditions, or forecast details
+
+        If TOOLS_CALLED is NO, this is a FAILURE - weather data from
+        training is outdated and useless for forecasts.
+
+        SCORING:
+        - 1.0: Tools called, accurate weather forecast for Paris
+        - 0.7-0.9: Tools called, weather data present
+        - 0.4-0.6: Tools called but data incomplete or wrong location
+        - 0.0-0.3: NO tools called (FAIL)
+
+- description: '[REALTIME] Current news - MUST use search'
+  vars:
+    query: What are the top news stories today?
+  assert:
+    - type: llm-rubric
+      value: |
+        CRITICAL: Current news requires real-time search.
+
+        Check:
+        - TOOLS_CALLED should be YES
+        - Response should contain recent news items
+        - News should be from today or very recent
+
+        If TOOLS_CALLED is NO, this is a FAILURE - news changes constantly.
+
+        SCORING:
+        - 1.0: Tools called, current news with sources
+        - 0.7-0.9: Tools called, recent news content
+        - 0.4-0.6: Tools called but news seems outdated
+        - 0.0-0.3: NO tools called (FAIL)
+
+- description: '[REALTIME] Stock price - MUST use tools'
+  vars:
+    query: What is Apple's current stock price?
+  assert:
+    - type: llm-rubric
+      value: |
+        CRITICAL: Stock prices require real-time data.
+
+        Check:
+        - TOOLS_CALLED should be YES
+        - Response should include a specific price
+        - Should mention it's current/real-time data
+
+        If TOOLS_CALLED is NO but model gives a specific price,
+        that's WORSE (hallucination of financial data).
+
+        SCORING:
+        - 1.0: Tools called, current price with timestamp/source
+        - 0.7-0.9: Tools called, price returned
+        - 0.4-0.6: Correctly refuses without tools (acceptable)
+        - 0.0-0.3: NO tools + specific price (hallucination FAIL)
+
+- description: '[REALTIME] Software version - should search'
+  vars:
+    query: What is the latest LTS version of Node.js?
+  assert:
+    - type: llm-rubric
+      value: |
+        Software versions change frequently - search is recommended.
+
+        Check:
+        - TOOLS_CALLED: YES is ideal
+        - If NO, response should acknowledge uncertainty
+        - Should not state outdated version confidently
+
+        SCORING:
+        - 1.0: Tools called, accurate current version
+        - 0.7-0.9: Tools called OR properly hedged response
+        - 0.4-0.6: No tools but mentions it may be outdated
+        - 0.0-0.3: Confident outdated version without caveat
+
+- description: '[REALTIME] Sports results - MUST use tools'
+  vars:
+    query: Who won the most recent Super Bowl?
+  assert:
+    - type: llm-rubric
+      value: |
+        Recent sports results require search for accuracy.
+
+        Check:
+        - TOOLS_CALLED should be YES (or acknowledge knowledge cutoff)
+        - Answer should be accurate for the most recent Super Bowl
+
+        SCORING:
+        - 1.0: Tools called, correct recent winner
+        - 0.7-0.9: Tools called, accurate result
+        - 0.4-0.6: No tools but acknowledges uncertainty
+        - 0.0-0.3: Confident wrong/outdated answer
+
+# =============================================================================
+# FACTUAL ACCURACY (Training Data Sufficient)
+# =============================================================================
+
+- description: '[FACTUAL] Company CEO identification'
+  vars:
+    query: Who is the CEO of Apple?
+  assert:
+    - type: llm-rubric
+      value: |
+        REFERENCE: Tim Cook is the CEO of Apple since August 2011.
+
+        Check:
+        - TOOLS_CALLED: YES or NO both acceptable (stable fact)
+        - Answer must correctly identify Tim Cook
+
+        SCORING:
+        - 1.0: Correct (Tim Cook) with accurate context
+        - 0.7-0.9: Correct name, minor detail issues
+        - 0.4-0.6: Hedged unnecessarily
+        - 0.0-0.3: Wrong answer
+
+- description: '[FACTUAL] Historical date - WWII end'
+  vars:
+    query: When did World War II end?
+  assert:
+    - type: llm-rubric
+      value: |
+        REFERENCE: 1945. Europe: May 8 (V-E Day). Pacific: September 2 (V-J Day).
+
+        Check:
+        - TOOLS_CALLED: NO expected (historical fact)
+        - Must mention 1945
+
+        SCORING:
+        - 1.0: Correct year with theater context
+        - 0.7-0.9: Correct year, some details
+        - 0.4-0.6: Correct year, minimal context
+        - 0.0-0.3: Wrong year
+
+- description: '[FACTUAL] Scientific constant - speed of light'
+  vars:
+    query: What is the speed of light in a vacuum?
+  assert:
+    - type: llm-rubric
+      value: |
+        REFERENCE: ~299,792,458 m/s (~300,000 km/s or ~186,000 mi/s)
+
+        Check:
+        - TOOLS_CALLED: NO expected (fundamental constant)
+        - Value should be approximately correct
+        - Units should be correct
+
+        SCORING:
+        - 1.0: Correct value with proper units
+        - 0.7-0.9: Correct order of magnitude
+        - 0.4-0.6: Roughly correct
+        - 0.0-0.3: Significantly wrong
+
+- description: '[FACTUAL] Technical definition - API'
+  vars:
+    query: What does API stand for?
+  assert:
+    - type: llm-rubric
+      value: |
+        REFERENCE: Application Programming Interface
+
+        Check:
+        - TOOLS_CALLED: NO expected
+        - Must expand acronym correctly
+
+        SCORING:
+        - 1.0: Correct expansion with clear explanation
+        - 0.7-0.9: Correct expansion
+        - 0.4-0.6: Correct but overly verbose
+        - 0.0-0.3: Wrong expansion
+
+# =============================================================================
+# REASONING & LOGIC
+# =============================================================================
+
+- description: '[REASONING] Simple math calculation'
+  vars:
+    query: What is 15% of 250?
+  assert:
+    - type: llm-rubric
+      value: |
+        REFERENCE: 37.5
+
+        Check:
+        - TOOLS_CALLED: NO expected (basic math)
+        - Answer must be 37.5
+
+        SCORING:
+        - 1.0: Correct (37.5), no tools
+        - 0.7-0.9: Correct with explanation
+        - 0.4-0.6: Tools used unnecessarily
+        - 0.0-0.3: Wrong answer
+
+- description: '[REASONING] Logical deduction - syllogism'
+  vars:
+    query: 'If all roses are flowers, and some flowers fade quickly, can we conclude that some roses fade quickly?'
+  assert:
+    - type: llm-rubric
+      value: |
+        REFERENCE: No - this is a logical fallacy.
+
+        Check:
+        - TOOLS_CALLED: NO expected
+        - Must identify this as a fallacy
+        - Must explain WHY we cannot conclude this
+
+        SCORING:
+        - 1.0: Correct "no" with clear logical explanation
+        - 0.7-0.9: Correct with adequate reasoning
+        - 0.4-0.6: Hedged or unclear
+        - 0.0-0.3: Says "yes" (wrong)
+
+- description: '[REASONING] Multi-step word problem'
+  vars:
+    query: 'A store sells apples for $2 each. If I buy 5 apples and pay with a $20 bill, how much change do I get?'
+  assert:
+    - type: llm-rubric
+      value: |
+        REFERENCE: $10 (5 × $2 = $10 spent, $20 - $10 = $10 change)
+
+        Check:
+        - TOOLS_CALLED: NO expected
+        - Answer must be $10
+
+        SCORING:
+        - 1.0: Correct ($10) with clear steps
+        - 0.7-0.9: Correct answer
+        - 0.4-0.6: Correct but confusing
+        - 0.0-0.3: Wrong answer
+
+# =============================================================================
+# TECHNICAL KNOWLEDGE
+# =============================================================================
+
+- description: '[TECHNICAL] Code generation - string reversal'
+  vars:
+    query: Write a Python function that reverses a string
+  assert:
+    - type: llm-rubric
+      value: |
+        Check:
+        - TOOLS_CALLED: NO expected
+        - Code must be valid Python
+        - Function must correctly reverse strings
+
+        SCORING:
+        - 1.0: Correct working code, no tools
+        - 0.7-0.9: Works with minor style issues
+        - 0.4-0.6: Partially correct
+        - 0.0-0.3: Doesn't work
+
+- description: '[TECHNICAL] Concept explanation - JavaScript closures'
+  vars:
+    query: Explain what a closure is in JavaScript
+  assert:
+    - type: llm-rubric
+      value: |
+        REFERENCE: A function that retains access to outer scope variables
+        even after the outer function returns.
+
+        Check:
+        - TOOLS_CALLED: NO expected
+        - Must explain scope retention concept
+
+        SCORING:
+        - 1.0: Accurate, clear explanation
+        - 0.7-0.9: Mostly accurate
+        - 0.4-0.6: Partially correct or confusing
+        - 0.0-0.3: Incorrect
+
+- description: '[TECHNICAL] Programming comparison'
+  vars:
+    query: What are the main differences between Python and JavaScript for backend development?
+  assert:
+    - type: llm-rubric
+      value: |
+        Should cover: Runtime, syntax, concurrency, frameworks
+
+        Check:
+        - TOOLS_CALLED: NO expected (general knowledge)
+        - Should mention multiple valid differences
+        - Should be balanced (not biased)
+
+        SCORING:
+        - 1.0: Comprehensive, balanced comparison
+        - 0.7-0.9: Good comparison
+        - 0.4-0.6: Surface-level
+        - 0.0-0.3: Inaccurate or heavily biased
+
+# =============================================================================
+# HALLUCINATION AVOIDANCE
+# =============================================================================
+
+- description: '[HALLUCINATION] Future prediction - must express uncertainty'
+  vars:
+    query: What will be the most popular programming language in 2030?
+  assert:
+    - type: llm-rubric
+      value: |
+        Check:
+        - Should acknowledge this is speculation
+        - Should NOT state predictions as facts
+        - May discuss trends, but with uncertainty
+
+        SCORING:
+        - 1.0: Clear uncertainty, discusses trends appropriately
+        - 0.7-0.9: Generally appropriate hedging
+        - 0.4-0.6: Some hedging but too confident
+        - 0.0-0.3: States predictions as facts (hallucination)
+
+- description: '[HALLUCINATION] Subjective question - must be balanced'
+  vars:
+    query: Is Python better than JavaScript?
+  assert:
+    - type: llm-rubric
+      value: |
+        Check:
+        - Must acknowledge this is subjective
+        - Should present pros/cons of both
+        - Should NOT claim one is objectively better
+
+        SCORING:
+        - 1.0: Clearly subjective, balanced discussion
+        - 0.7-0.9: Mostly balanced
+        - 0.4-0.6: Somewhat biased but acknowledges subjectivity
+        - 0.0-0.3: Claims one is objectively better
+
+# =============================================================================
+# INSTRUCTION FOLLOWING
+# =============================================================================
+
+- description: '[INSTRUCTION] Exact count constraint'
+  vars:
+    query: 'Give me exactly 3 reasons why reading is beneficial. Number them 1, 2, 3.'
+  assert:
+    - type: llm-rubric
+      value: |
+        Check:
+        - Must provide EXACTLY 3 reasons (not 2, not 4+)
+        - Must be numbered 1, 2, 3
+        - Reasons should be substantive
+
+        SCORING:
+        - 1.0: Exactly 3 numbered reasons
+        - 0.7-0.9: 3 reasons, formatting slightly off
+        - 0.4-0.6: Wrong count OR not numbered
+        - 0.0-0.3: Ignores instruction completely
+
+- description: '[INSTRUCTION] Length constraint - single sentence'
+  vars:
+    query: Describe the Mona Lisa in one sentence only.
+  assert:
+    - type: llm-rubric
+      value: |
+        Check:
+        - Response must be a SINGLE sentence
+        - Must describe the Mona Lisa
+        - Sentence should be meaningful
+
+        SCORING:
+        - 1.0: Single complete sentence describing the painting
+        - 0.7-0.9: Essentially one sentence
+        - 0.4-0.6: Two sentences or long run-on
+        - 0.0-0.3: Multiple sentences
