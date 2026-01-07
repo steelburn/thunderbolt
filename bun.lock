@@ -40,6 +40,7 @@
         "@tauri-apps/plugin-os": "^2.3.2",
         "@tauri-apps/plugin-process": "^2.3.1",
         "@vlcn.io/crsqlite-wasm": "^0.16.0",
+        "@vlcn.io/rx-tbl": "^0.15.0",
         "ai": "5.0.21",
         "better-auth": "^1.4.2",
         "class-variance-authority": "^0.7.1",
@@ -750,6 +751,8 @@
     "@vitest/utils": ["@vitest/utils@3.2.4", "", { "dependencies": { "@vitest/pretty-format": "3.2.4", "loupe": "^3.1.4", "tinyrainbow": "^2.0.0" } }, "sha512-fB2V0JFrQSMsCo9HiSq3Ezpdv4iYaXRG1Sx8edX3MwxfyNn83mKiGzOcH+Fkxt4MHxr3y42fQi1oeAInqgX2QA=="],
 
     "@vlcn.io/crsqlite-wasm": ["@vlcn.io/crsqlite-wasm@0.16.0", "", { "dependencies": { "@vlcn.io/wa-sqlite": "0.22.0", "@vlcn.io/xplat-api": "0.15.0", "async-mutex": "^0.4.0" } }, "sha512-5gf52eyMYvZirxuEUo4QS65JhEsw3fndoO+tCtCEOxuiIEtvaKB2/6wuuKGRlMVkxIp4Bls70D3DCF5v9lcJxA=="],
+
+    "@vlcn.io/rx-tbl": ["@vlcn.io/rx-tbl@0.15.0", "", { "dependencies": { "@vlcn.io/xplat-api": "0.15.0" } }, "sha512-6P5R8E5EJ6oASDyT7TbuV18Af4P/YobGEI3+uGUoquQi0GVl+NLdtbYA/sR4PkXsjQ1zBcs0oAi5TmYGe+Cd6A=="],
 
     "@vlcn.io/wa-sqlite": ["@vlcn.io/wa-sqlite@0.22.0", "", {}, "sha512-OujKro0mAqP7/efUeCGB6zBiyMoSCFVe7jQKPF0n47U9ZhOaIW3kQUVCwF+CmzvzQfN1Vl4PrFQRNNxlSwTCNQ=="],
 

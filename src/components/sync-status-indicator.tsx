@@ -9,7 +9,17 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/t
 const statusConfig: Record<SyncStatus, { icon: typeof Cloud; label: string; color: string }> = {
   idle: {
     icon: Cloud,
-    label: 'Synced',
+    label: 'Ready to sync',
+    color: 'text-muted-foreground',
+  },
+  connecting: {
+    icon: Loader2,
+    label: 'Connecting...',
+    color: 'text-blue-500',
+  },
+  connected: {
+    icon: Cloud,
+    label: 'Connected',
     color: 'text-green-500',
   },
   syncing: {
@@ -59,7 +69,7 @@ export const SyncStatusIndicator: FC<SyncStatusIndicatorProps> = ({ className, s
   const Icon = config.icon
   const iconSize = size === 'sm' ? 14 : 16
   const isVersionMismatch = status === 'version_mismatch'
-  const canSync = status !== 'syncing' && !isVersionMismatch
+  const canSync = status !== 'syncing' && status !== 'connecting' && !isVersionMismatch
 
   return (
     <TooltipProvider>
@@ -73,7 +83,7 @@ export const SyncStatusIndicator: FC<SyncStatusIndicatorProps> = ({ className, s
           >
             <Icon
               size={iconSize}
-              className={cn(config.color, status === 'syncing' && 'animate-spin')}
+              className={cn(config.color, (status === 'syncing' || status === 'connecting') && 'animate-spin')}
               aria-hidden="true"
             />
             {showLabel && <span className={cn('text-xs', config.color)}>{config.label}</span>}

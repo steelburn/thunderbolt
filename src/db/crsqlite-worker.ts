@@ -11,13 +11,22 @@ if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
 }
 
 import initWasm, { type DB } from '@vlcn.io/crsqlite-wasm'
+import tblrx from '@vlcn.io/rx-tbl'
 
 // SQLite compatible types for parameter binding
 type SQLiteCompatibleType = number | string | Uint8Array | Array<number> | bigint | null
 
 type WorkerRequest = {
   id: number
-  method: 'init' | 'exec' | 'close' | 'getSiteId' | 'getChanges' | 'applyChanges'
+  method:
+    | 'init'
+    | 'exec'
+    | 'close'
+    | 'getSiteId'
+    | 'getChanges'
+    | 'applyChanges'
+    | 'subscribeToChanges'
+    | 'unsubscribeFromChanges'
   params?: {
     filename?: string
     sql?: string
@@ -56,6 +65,8 @@ export type CRSQLChange = {
 }
 
 let db: DB | null = null
+let rxDispose: (() => void) | null = null
+let changeSubscription: (() => void) | null = null
 
 // Queue to serialize all database operations
 type QueuedOperation = {
@@ -136,6 +147,10 @@ const initDatabase = async (filename: string): Promise<void> => {
   } else {
     console.info(`cr-sqlite worker: Database opened with site_id: ${db.siteid}`)
   }
+
+  // Set up reactive table listener for change notifications
+  const rx = tblrx(db)
+  rxDispose = () => rx.dispose()
 }
 
 /**
@@ -321,9 +336,64 @@ const applyChanges = async (changes: SerializedCRSQLChange[]): Promise<{ dbVersi
 }
 
 /**
+ * Subscribe to database changes
+ * Notifies main thread when any table changes (for sync push triggers)
+ */
+const subscribeToChanges = (): void => {
+  if (!db) {
+    throw new Error('Database not initialized')
+  }
+
+  // Unsubscribe from any existing subscription
+  if (changeSubscription) {
+    changeSubscription()
+    changeSubscription = null
+  }
+
+  // Get the reactive wrapper (recreate it since we disposed in init)
+  const rx = tblrx(db)
+
+  // Subscribe to all table changes
+  // The callback is triggered whenever any table is modified
+  changeSubscription = rx.onAny(() => {
+    // Notify main thread that local changes occurred
+    // The main thread will then fetch and push the changes
+    self.postMessage({
+      id: -2, // Special ID for change notifications
+      result: { tablesChanged: true },
+    })
+  })
+
+  // Store dispose function
+  rxDispose = () => {
+    if (changeSubscription) {
+      changeSubscription()
+      changeSubscription = null
+    }
+    rx.dispose()
+  }
+}
+
+/**
+ * Unsubscribe from database changes
+ */
+const unsubscribeFromChanges = (): void => {
+  if (changeSubscription) {
+    changeSubscription()
+    changeSubscription = null
+  }
+}
+
+/**
  * Close the database
  */
 const closeDatabase = async (): Promise<void> => {
+  // Clean up rx-tbl subscription first
+  if (rxDispose) {
+    rxDispose()
+    rxDispose = null
+  }
+
   if (db !== null) {
     // Finalize cr-sqlite before closing
     await db.exec('SELECT crsql_finalize()')
@@ -367,6 +437,16 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
         response.result = { success: true, dbVersion: applyResult.dbVersion }
         break
       }
+
+      case 'subscribeToChanges':
+        subscribeToChanges()
+        response.result = { success: true }
+        break
+
+      case 'unsubscribeFromChanges':
+        unsubscribeFromChanges()
+        response.result = { success: true }
+        break
 
       case 'close':
         await closeDatabase()

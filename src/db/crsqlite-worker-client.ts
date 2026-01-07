@@ -7,7 +7,15 @@ import type { CRSQLChange } from './crsqlite-worker'
 
 type WorkerRequest = {
   id: number
-  method: 'init' | 'exec' | 'close' | 'getSiteId' | 'getChanges' | 'applyChanges'
+  method:
+    | 'init'
+    | 'exec'
+    | 'close'
+    | 'getSiteId'
+    | 'getChanges'
+    | 'applyChanges'
+    | 'subscribeToChanges'
+    | 'unsubscribeFromChanges'
   params?: {
     filename?: string
     sql?: string
@@ -26,6 +34,7 @@ type WorkerResponse = {
     siteId?: string
     changes?: unknown[] // Changes with BigInt serialized as strings
     dbVersion?: string // BigInt serialized as string for postMessage
+    tablesChanged?: boolean // Notification that tables changed (for sync)
   }
   error?: string
 }
@@ -40,6 +49,7 @@ export class CRSQLiteWorkerClient {
   private requestId = 0
   private pendingRequests = new Map<number, PendingRequest>()
   private readyPromise: Promise<void>
+  private changeListeners: Set<() => void> = new Set()
 
   constructor(worker: Worker) {
     this.worker = worker
@@ -61,6 +71,12 @@ export class CRSQLiteWorkerClient {
 
       // Skip ready message
       if (id === -1) return
+
+      // Handle change notifications from rx-tbl
+      if (id === -2 && result?.tablesChanged) {
+        this.notifyChangeListeners()
+        return
+      }
 
       const pending = this.pendingRequests.get(id)
       if (!pending) {
@@ -196,6 +212,45 @@ export class CRSQLiteWorkerClient {
   }
 
   /**
+   * Subscribe to database change notifications
+   * The worker will call back when any table is modified
+   */
+  async subscribeToChanges(): Promise<void> {
+    await this.sendRequest('subscribeToChanges')
+  }
+
+  /**
+   * Unsubscribe from database change notifications
+   */
+  async unsubscribeFromChanges(): Promise<void> {
+    await this.sendRequest('unsubscribeFromChanges')
+  }
+
+  /**
+   * Add a listener that will be called when database tables change
+   * Returns an unsubscribe function
+   */
+  onTablesChanged(listener: () => void): () => void {
+    this.changeListeners.add(listener)
+    return () => {
+      this.changeListeners.delete(listener)
+    }
+  }
+
+  /**
+   * Notify all change listeners
+   */
+  private notifyChangeListeners(): void {
+    for (const listener of this.changeListeners) {
+      try {
+        listener()
+      } catch (error) {
+        console.error('Error in change listener:', error)
+      }
+    }
+  }
+
+  /**
    * Close the database
    */
   async close(): Promise<void> {
@@ -212,5 +267,6 @@ export class CRSQLiteWorkerClient {
       pending.reject(new Error('Worker terminated'))
     }
     this.pendingRequests.clear()
+    this.changeListeners.clear()
   }
 }

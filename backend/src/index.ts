@@ -11,6 +11,7 @@ import { createHttpLoggingMiddleware } from '@/middleware/http-logging'
 import { createPostHogRoutes } from '@/posthog/routes'
 import { createProToolsRoutes } from '@/pro/routes'
 import { createSyncRoutes } from '@/sync/routes'
+import { createSyncWebSocketRoutes } from '@/sync/websocket'
 import type { AppDeps } from '@/types'
 import { cors } from '@elysiajs/cors'
 import { Elysia } from 'elysia'
@@ -80,6 +81,7 @@ export const createApp = async (deps?: AppDeps) => {
       .use(createInferenceRoutes())
       .use(createPostHogRoutes(fetchFn))
       .use(createSyncRoutes(database, auth))
+      .use(createSyncWebSocketRoutes(database, auth))
   )
 }
 

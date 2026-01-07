@@ -1,10 +1,9 @@
 import type { HttpClient } from '@/contexts'
 import { getSettings } from '@/dal'
 import type { AnyDrizzleDatabase } from '@/db/database-interface'
+import { getSiteId, performInitialSync, type SerializedChange } from '@/db/initial-sync'
 import { initializeCRRs, migrate } from '@/db/migrate'
 import { DatabaseSingleton } from '@/db/singleton'
-import type { SerializedChange } from '@/db/sync-service'
-import { SyncService } from '@/db/sync-service'
 import { createHandleError } from '@/lib/error-utils'
 import { createAppDir, resetAppDir } from '@/lib/fs'
 import { getDatabasePath, getDatabaseType } from '@/lib/platform'
@@ -124,8 +123,7 @@ async function pushPreservedChanges(
   }
 
   try {
-    const tempSyncService = new SyncService({ httpClient })
-    const siteId = await tempSyncService.getSiteId()
+    const siteId = await getSiteId()
     const migrationVersion = (await import('@/db/migrate')).getLatestMigrationVersion()
 
     const maxDbVersion = Math.max(...changes.map((c) => parseInt(c.db_version, 10)))
@@ -275,9 +273,7 @@ const executeInitializationSteps = async (httpClient?: HttpClient): Promise<Hand
       await pushPreservedChanges(initialHttpClient, preservedChanges)
 
       // Then do normal sync: push any remaining local changes, then pull
-      const tempSyncService = new SyncService({ httpClient: initialHttpClient })
-      await tempSyncService.pushChanges()
-      await tempSyncService.pullChanges()
+      await performInitialSync(initialHttpClient)
     } catch (error) {
       // Non-critical - continue even if initial sync fails (e.g., offline, no server)
       console.warn('Initial sync failed, continuing with defaults:', error)

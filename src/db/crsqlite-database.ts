@@ -122,6 +122,38 @@ export class CRSQLiteDatabase implements DatabaseInterface {
     return this.workerClient.applyChanges(changes)
   }
 
+  /**
+   * Subscribe to database change notifications via rx-tbl
+   * The worker will notify when any table is modified
+   */
+  async subscribeToChanges(): Promise<void> {
+    if (!this.workerClient) {
+      throw new Error('Database not initialized')
+    }
+    return this.workerClient.subscribeToChanges()
+  }
+
+  /**
+   * Unsubscribe from database change notifications
+   */
+  async unsubscribeFromChanges(): Promise<void> {
+    if (!this.workerClient) {
+      throw new Error('Database not initialized')
+    }
+    return this.workerClient.unsubscribeFromChanges()
+  }
+
+  /**
+   * Add a listener that will be called when database tables change
+   * Returns an unsubscribe function
+   */
+  onTablesChanged(listener: () => void): () => void {
+    if (!this.workerClient) {
+      throw new Error('Database not initialized')
+    }
+    return this.workerClient.onTablesChanged(listener)
+  }
+
   async close(): Promise<void> {
     if (this.workerClient) {
       await this.workerClient.close()

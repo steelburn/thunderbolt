@@ -1,12 +1,12 @@
 /**
- * Hook for managing the sync service lifecycle and status
+ * Hook for managing the WebSocket-based sync service lifecycle and status
  */
 
 import { useChatStore } from '@/chats/chat-store'
 import { useSaveMessages } from '@/chats/use-save-messages'
-import { useHttpClient } from '@/contexts'
 import { getSyncService, initSyncService, type SyncStatus } from '@/db/sync-service'
 import { DatabaseSingleton } from '@/db/singleton'
+import { useSettings } from '@/hooks/use-settings'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
@@ -23,6 +23,18 @@ const TABLE_TO_QUERY_KEYS: Record<string, string[][]> = {
   chat_messages: [['chatThreads']], // Messages affect thread display
   mcp_servers: [['mcp-servers']],
   triggers: [['triggers']],
+}
+
+/**
+ * Convert HTTP URL to WebSocket URL
+ * http://localhost:8000/v1 -> ws://localhost:8000/v1/sync/ws
+ * https://api.example.com/v1 -> wss://api.example.com/v1/sync/ws
+ */
+const httpToWsUrl = (httpUrl: string): string => {
+  const url = new URL(httpUrl)
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
+  url.pathname = url.pathname.replace(/\/$/, '') + '/sync/ws'
+  return url.toString()
 }
 
 export type UseSyncServiceResult = {
@@ -45,11 +57,11 @@ export type UseSyncServiceResult = {
 }
 
 /**
- * Hook for managing the sync service
+ * Hook for managing the WebSocket sync service
  * Automatically initializes and starts the sync service when the app is ready
  */
 export const useSyncService = (): UseSyncServiceResult => {
-  const httpClient = useHttpClient()
+  const { cloudUrl } = useSettings({ cloud_url: 'http://localhost:8000/v1' })
   const queryClient = useQueryClient()
   const { createSaveMessages } = useSaveMessages()
   const [status, setStatus] = useState<SyncStatus>('idle')
@@ -103,13 +115,14 @@ export const useSyncService = (): UseSyncServiceResult => {
 
   // Initialize and start sync service
   useEffect(() => {
-    if (!isSupported || !httpClient) {
+    if (!isSupported || !cloudUrl.value) {
       return
     }
 
+    const wsUrl = httpToWsUrl(cloudUrl.value)
+
     const service = initSyncService({
-      httpClient,
-      syncIntervalMs: 10000, // 10 seconds
+      wsUrl,
       onStatusChange: (newStatus) => {
         setStatus(newStatus)
       },
@@ -136,7 +149,7 @@ export const useSyncService = (): UseSyncServiceResult => {
       service.stop()
       setIsRunning(false)
     }
-  }, [isSupported, httpClient, invalidateQueriesForTables, recreateChatSessions])
+  }, [isSupported, cloudUrl.value, invalidateQueriesForTables, recreateChatSessions])
 
   const forceSync = useCallback(async () => {
     const service = getSyncService()
