@@ -16,9 +16,14 @@ import { Card, CardContent } from '@/components/ui/card'
 import { SearchInput } from '@/components/ui/search-input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { deleteAutomation, getAllPrompts, resetAutomationToDefault, runAutomation } from '@/dal'
-import { DatabaseSingleton } from '@/db/singleton'
-import { triggersTable } from '@/db/tables'
+import {
+  deleteAutomation,
+  getAllPrompts,
+  getTriggersByPromptId,
+  resetAutomationToDefault,
+  runAutomation,
+  updateTrigger,
+} from '@/dal'
 import { defaultAutomations } from '@/defaults/automations'
 import { isAutomationModified } from '@/defaults/utils'
 import { useSettings } from '@/hooks/use-settings'
@@ -26,7 +31,6 @@ import { trackEvent } from '@/lib/posthog'
 import { cn } from '@/lib/utils'
 import type { Prompt, Trigger } from '@/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { eq } from 'drizzle-orm'
 import { Pen, Play, Plus, Search, Trash2 } from 'lucide-react'
 import { memo, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
@@ -237,14 +241,13 @@ interface PromptCardProps {
 }
 
 const PromptCard = memo(({ prompt, triggersEnabled, onRun, onEdit, onDelete, onReset }: PromptCardProps) => {
-  const db = DatabaseSingleton.instance.db
   const queryClient = useQueryClient()
 
   // Query triggers for this prompt
   const { data: triggers = [] } = useQuery({
     queryKey: ['triggers', prompt.id],
     queryFn: async (): Promise<Trigger[]> => {
-      return db.select().from(triggersTable).where(eq(triggersTable.promptId, prompt.id))
+      return getTriggersByPromptId(prompt.id)
     },
   })
 
@@ -260,10 +263,7 @@ const PromptCard = memo(({ prompt, triggersEnabled, onRun, onEdit, onDelete, onR
   const toggleTriggerMutation = useMutation({
     mutationFn: async (enabled: boolean) => {
       if (primaryTrigger) {
-        await db
-          .update(triggersTable)
-          .set({ isEnabled: enabled ? 1 : 0 })
-          .where(eq(triggersTable.id, primaryTrigger.id))
+        await updateTrigger(primaryTrigger.id, { isEnabled: enabled ? 1 : 0 })
       }
     },
     onSuccess: () => {

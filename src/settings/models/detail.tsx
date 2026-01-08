@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { getModel, updateModel } from '@/dal'
+import { deleteModel, getModel, updateModel } from '@/dal'
 import { DatabaseSingleton } from '@/db/singleton'
 import { modelsTable } from '@/db/tables'
 import type { Model } from '@/types'
@@ -89,7 +89,7 @@ export default function ModelDetailPage() {
 
   const deleteModelMutation = useMutation({
     mutationFn: async (id: string) => {
-      await db.delete(modelsTable).where(eq(modelsTable.id, id))
+      await deleteModel(id)
       return true
     },
     onSuccess: () => {

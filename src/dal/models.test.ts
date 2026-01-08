@@ -4,6 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test'
 import { eq } from 'drizzle-orm'
 import { v7 as uuidv7 } from 'uuid'
 import {
+  deleteModel,
   getAllModels,
   getAvailableModels,
   getDefaultModelForThread,
@@ -403,6 +404,18 @@ describe('Models DAL', () => {
       // Should fall back to system model when the last message's model doesn't exist
       const model = await getDefaultModelForThread(threadId)
       expect(model.id).toBe(systemModelId)
+    })
+  })
+  describe('deleteModel', () => {
+    it('should delete a model by ID', async () => {
+      const db = DatabaseSingleton.instance.db
+      const modelId = uuidv7()
+      await db
+        .insert(modelsTable)
+        .values({ id: modelId, provider: 'openai', name: 'Test Model', model: 'gpt-4', isSystem: 0, enabled: 1 })
+      await deleteModel(modelId)
+      const model = await getModel(modelId)
+      expect(model).toBe(null)
     })
   })
 })

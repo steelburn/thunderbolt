@@ -2,7 +2,7 @@ import { DatabaseSingleton } from '@/db/singleton'
 import { mcpServersTable } from '@/db/tables'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test'
 import { v7 as uuidv7 } from 'uuid'
-import { getAllMcpServers, getHttpMcpServers } from './mcp-servers'
+import { deleteMcpServer, getAllMcpServers, getHttpMcpServers } from './mcp-servers'
 import { resetTestDatabase, setupTestDatabase, teardownTestDatabase } from './test-utils'
 
 beforeAll(async () => {
@@ -103,6 +103,19 @@ describe('MCP Servers DAL', () => {
       expect(servers.map((s) => s.id)).toContain(serverId1)
       expect(servers.map((s) => s.id)).toContain(serverId2)
       expect(servers.map((s) => s.id)).not.toContain(serverId3)
+    })
+  })
+
+  describe('deleteMcpServer', () => {
+    it('should delete a MCP server by ID', async () => {
+      const db = DatabaseSingleton.instance.db
+      const serverId = uuidv7()
+      await db
+        .insert(mcpServersTable)
+        .values({ id: serverId, name: 'Test MCP Server', type: 'http', url: 'http://example.com', enabled: 1 })
+      await deleteMcpServer(serverId)
+      const servers = await getAllMcpServers()
+      expect(servers).toHaveLength(0)
     })
   })
 })

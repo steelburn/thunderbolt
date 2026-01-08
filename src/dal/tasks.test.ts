@@ -2,7 +2,7 @@ import { DatabaseSingleton } from '@/db/singleton'
 import { tasksTable } from '@/db/tables'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test'
 import { v7 as uuidv7 } from 'uuid'
-import { getIncompleteTasks, getIncompleteTasksCount } from './tasks'
+import { deleteManyTasks, deleteTask, getIncompleteTasks, getIncompleteTasksCount } from './tasks'
 import { resetTestDatabase, setupTestDatabase, teardownTestDatabase } from './test-utils'
 
 beforeAll(async () => {
@@ -135,6 +135,32 @@ describe('Tasks DAL', () => {
 
       const count = await getIncompleteTasksCount()
       expect(count).toBe(2)
+    })
+  })
+
+  describe('deleteTask', () => {
+    it('should delete a task by ID', async () => {
+      const db = DatabaseSingleton.instance.db
+      const taskId = uuidv7()
+      await db.insert(tasksTable).values({ id: taskId, item: 'Test task', isComplete: 0, order: 1 })
+      await deleteTask(taskId)
+      const tasks = await getIncompleteTasks()
+      expect(tasks).toEqual([])
+    })
+  })
+
+  describe('deleteManyTasks', () => {
+    it('should delete many tasks by ID', async () => {
+      const db = DatabaseSingleton.instance.db
+      const taskId1 = uuidv7()
+      const taskId2 = uuidv7()
+      await db.insert(tasksTable).values([
+        { id: taskId1, item: 'Test task 1', isComplete: 0, order: 1 },
+        { id: taskId2, item: 'Test task 2', isComplete: 0, order: 2 },
+      ])
+      await deleteManyTasks([taskId1, taskId2])
+      const tasks = await getIncompleteTasks()
+      expect(tasks).toEqual([])
     })
   })
 })

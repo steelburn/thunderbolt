@@ -1,5 +1,6 @@
 // Models
 export {
+  deleteModel,
   getAllModels,
   getAvailableModels,
   getDefaultModelForThread,
@@ -38,10 +39,10 @@ export {
 export { getChatMessages, getLastMessage, saveMessagesWithContextUpdate, updateMessage } from './chat-messages'
 
 // Tasks
-export { getIncompleteTasks, getIncompleteTasksCount, updateTask } from './tasks'
+export { deleteManyTasks, deleteTask, getIncompleteTasks, getIncompleteTasksCount, updateTask } from './tasks'
 
 // MCP Servers
-export { getAllMcpServers, getHttpMcpServers } from './mcp-servers'
+export { deleteMcpServer, getAllMcpServers, getHttpMcpServers } from './mcp-servers'
 
 // Prompts
 export {
@@ -52,3 +53,14 @@ export {
   runAutomation,
   updateAutomation,
 } from './prompts'
+
+// Triggers
+export {
+  createTrigger,
+  deleteTrigger,
+  deleteTriggerByPromptId,
+  getAllTriggers,
+  getTriggersByPromptId,
+  updateTrigger,
+  updateTriggerByPromptId,
+} from './triggers'

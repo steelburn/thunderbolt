@@ -11,15 +11,22 @@ import {
 } from '@/components/ui/responsive-modal'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DatabaseSingleton } from '@/db/singleton'
-import { promptsTable, triggersTable } from '@/db/tables'
+import { promptsTable } from '@/db/tables'
 import { useSettings } from '@/hooks/use-settings'
 import { trackEvent } from '@/lib/posthog'
-import { getAvailableModels, getSelectedModel, updateAutomation } from '@/dal'
+import {
+  createTrigger,
+  deleteTriggerByPromptId,
+  getAvailableModels,
+  getSelectedModel,
+  getTriggersByPromptId,
+  updateAutomation,
+  updateTriggerByPromptId,
+} from '@/dal'
 import { generateTitle } from '@/lib/title-generator'
 import type { Model, Prompt } from '@/types'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { eq } from 'drizzle-orm'
 import { useCallback, useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { v7 as uuidv7 } from 'uuid'
@@ -105,7 +112,7 @@ export default function AutomationFormModal({
       if (prompt) {
         // Load existing trigger data if editing
         const loadTriggerData = async () => {
-          const existingTriggers = await db.select().from(triggersTable).where(eq(triggersTable.promptId, prompt.id))
+          const existingTriggers = await getTriggersByPromptId(prompt.id)
           const trigger = existingTriggers[0] // Assuming one trigger per prompt
 
           const promptText = prompt.prompt
@@ -159,7 +166,7 @@ export default function AutomationFormModal({
 
       // Create trigger if specified and not manual
       if (values.triggerType === 'time' && values.triggerTime) {
-        await db.insert(triggersTable).values({
+        await createTrigger({
           id: uuidv7(),
           triggerType: values.triggerType,
           triggerTime: values.triggerTime,
@@ -191,24 +198,21 @@ export default function AutomationFormModal({
       })
 
       // Handle trigger updates when editing
-      const existingTriggers = await db.select().from(triggersTable).where(eq(triggersTable.promptId, prompt.id))
+      const existingTriggers = await getTriggersByPromptId(prompt.id)
       const hasNewTriggerData = values.triggerType === 'time' && values.triggerTime
 
       if (hasNewTriggerData) {
         // User wants to add/update a trigger
         if (existingTriggers.length > 0) {
           // Update existing trigger
-          await db
-            .update(triggersTable)
-            .set({
-              triggerType: 'time',
-              triggerTime: values.triggerTime!,
-              isEnabled: 1,
-            })
-            .where(eq(triggersTable.promptId, prompt.id))
+          await updateTriggerByPromptId(prompt.id, {
+            triggerType: 'time',
+            triggerTime: values.triggerTime!,
+            isEnabled: 1,
+          })
         } else {
           // Create new trigger
-          await db.insert(triggersTable).values({
+          await createTrigger({
             id: uuidv7(),
             triggerType: 'time',
             triggerTime: values.triggerTime!,
@@ -219,7 +223,7 @@ export default function AutomationFormModal({
       } else {
         // User selected manual or removed trigger data, delete any existing triggers
         if (existingTriggers.length > 0) {
-          await db.delete(triggersTable).where(eq(triggersTable.promptId, prompt.id))
+          await deleteTriggerByPromptId(prompt.id)
         }
       }
     },
