@@ -19,7 +19,7 @@ import ky from 'ky'
 import type { PostHog } from 'posthog-js'
 import { useCallback, useEffect, useState } from 'react'
 
-// Default cloud URL - used for initial sync before settings are loaded
+// Default cloud URL - used as fallback when no custom cloud_url is configured in settings
 const DEFAULT_CLOUD_URL = import.meta.env.VITE_THUNDERBOLT_CLOUD_URL || 'http://localhost:8000/v1'
 
 /**
@@ -262,11 +262,16 @@ const executeInitializationSteps = async (httpClient?: HttpClient): Promise<Hand
     // those changes to the server so they aren't lost.
     //
     // Flow:
-    // 1. Push preserved changes (from Step 2.5) - these would be lost otherwise
-    // 2. Push any other local changes (normal sync)
-    // 3. Pull remote changes to get data from other devices
+    // 1. Read cloud_url from settings (user may have configured a custom server)
+    // 2. Push preserved changes (from Step 2.5) - these would be lost otherwise
+    // 3. Push any other local changes (normal sync)
+    // 4. Pull remote changes to get data from other devices
     try {
-      const initialHttpClient = ky.create({ prefixUrl: DEFAULT_CLOUD_URL })
+      // Read cloud_url from settings BEFORE sync - user may have a custom server configured.
+      // This must happen after migrations so the settings table schema is up to date.
+      // Falls back to DEFAULT_CLOUD_URL if no custom setting exists.
+      const { cloudUrl } = await getSettings({ cloud_url: DEFAULT_CLOUD_URL })
+      const initialHttpClient = ky.create({ prefixUrl: cloudUrl })
 
       // Push preserved changes first (captured before migration in Step 2.5)
       // Without this, local changes made before migration would be permanently lost
