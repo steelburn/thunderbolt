@@ -147,7 +147,7 @@ jobs:
         if: matrix.os == 'windows-latest' && matrix.target == 'x86_64-pc-windows-msvc'
         run: |
           bun install
-          bun tauri build --bundles msi,nsis --target x86_64-pc-windows-msvc
+          bun tauri build --bundles msi,nsis,updater --target x86_64-pc-windows-msvc
         env:
           RUSTFLAGS: ''
           CARGO_INCREMENTAL: 0
@@ -163,7 +163,7 @@ jobs:
           rustup target add aarch64-pc-windows-msvc
           # Build for ARM64
           bun install
-          bun tauri build --bundles msi,nsis --target aarch64-pc-windows-msvc
+          bun tauri build --bundles msi,nsis,updater --target aarch64-pc-windows-msvc
         env:
           RUSTFLAGS: ''
           CARGO_INCREMENTAL: 0
@@ -176,7 +176,7 @@ jobs:
         if: matrix.os == 'macos-latest' && matrix.target == 'aarch64-apple-darwin'
         run: |
           bun install
-          bun tauri build --bundles app,dmg --target aarch64-apple-darwin
+          bun tauri build --bundles app,dmg,updater --target aarch64-apple-darwin
         env:
           RUSTFLAGS: ''
           CARGO_INCREMENTAL: 0
@@ -196,7 +196,7 @@ jobs:
           rm -rf src-tauri/target/x86_64-apple-darwin
           # Build for Intel with proper environment
           bun install
-          bun tauri build --bundles app,dmg --target x86_64-apple-darwin
+          bun tauri build --bundles app,dmg,updater --target x86_64-apple-darwin
         env:
           # Override the target-cpu=native flag
           RUSTFLAGS: '-C target-cpu=x86-64'
