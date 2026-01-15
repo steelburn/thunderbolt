@@ -14,7 +14,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
  * Mapping from database table names to React Query keys that should be invalidated
  * when that table changes from a sync operation
  */
-const TABLE_TO_QUERY_KEYS: Record<string, string[][]> = {
+const tableToQueryKeys: Record<string, string[][]> = {
   models: [['models']],
   tasks: [['tasks']],
   prompts: [['prompts'], ['triggers']],
@@ -84,7 +84,7 @@ export const useSyncService = (): UseSyncServiceResult => {
       const queryKeysToInvalidate = new Set<string>()
 
       for (const table of tables) {
-        const queryKeys = TABLE_TO_QUERY_KEYS[table]
+        const queryKeys = tableToQueryKeys[table]
         if (queryKeys) {
           for (const key of queryKeys) {
             queryKeysToInvalidate.add(JSON.stringify(key))
