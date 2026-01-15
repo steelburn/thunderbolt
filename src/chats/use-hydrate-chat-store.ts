@@ -5,6 +5,7 @@ import {
   getDefaultModelForThread,
   getSettings,
   getTriggerPromptForThread,
+  isChatThreadDeleted,
 } from '@/dal'
 import { useMCP } from '@/lib/mcp-provider'
 import { convertDbChatMessageToUIMessage } from '@/lib/utils'
@@ -13,12 +14,14 @@ import { useState } from 'react'
 import { useChatStore } from './chat-store'
 import { createChatInstance } from './chat-instance'
 import { useSaveMessages } from './use-save-messages'
+import { useNavigate } from 'react-router'
 
 type UseHydrateChatStoreParams = {
   id: string
 }
 
 export const useHydrateChatStore = ({ id }: UseHydrateChatStoreParams) => {
+  const navigate = useNavigate()
   const [isReady, setIsReady] = useState(false)
 
   const { getEnabledClients } = useMCP()
@@ -28,6 +31,13 @@ export const useHydrateChatStore = ({ id }: UseHydrateChatStoreParams) => {
 
   const hydrateChatStore = async () => {
     const { createSession, sessions, setCurrentSessionId, setMcpClients, setModels } = useChatStore.getState()
+
+    // Check if this ID belongs to a deleted chat - redirect to 404 if so
+    const isDeleted = await isChatThreadDeleted(id)
+    if (isDeleted) {
+      navigate('/not-found', { replace: true })
+      return
+    }
 
     // If the session already exists, set the current session id and update the mcp clients and models
     if (sessions.has(id)) {
