@@ -293,22 +293,8 @@ describe('utils', () => {
       expect(result).not.toHaveProperty('deletedAt')
     })
 
-    it('should skip foreign key columns', () => {
-      const parentTable = sqliteTable('parent', {
-        id: text('id').primaryKey().notNull(),
-      })
-
-      const childTable = sqliteTable('child', {
-        id: text('id').primaryKey().notNull(),
-        parentId: text('parent_id').references(() => parentTable.id),
-        name: text('name'),
-      })
-
-      const result = clearNullableColumns(childTable)
-
-      expect(result).toEqual({ name: null })
-      expect(result).not.toHaveProperty('parentId')
-    })
+    // NOTE: Foreign key columns are no longer skipped - for cr-sqlite CRR compatibility,
+    // FK constraints are logical only. Nullable FK columns will be cleared like any other nullable column.
 
     it('should skip required foreign key columns', () => {
       const parentTable = sqliteTable('parent', {
