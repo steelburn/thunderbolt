@@ -1,18 +1,18 @@
 import { mock } from 'bun:test'
+import * as authUtils from '@/auth/utils'
+import * as waitlistUtils from '@/waitlist/utils'
 
-// Mock email functions BEFORE importing modules that use them
+// Mock only the email-sending functions, preserve all other exports
 const mockSendSignInEmail = mock(() => Promise.resolve())
 const mockSendWaitlistNotReadyEmail = mock(() => Promise.resolve())
 
 mock.module('@/auth/utils', () => ({
+  ...authUtils,
   sendSignInEmail: mockSendSignInEmail,
-  parseTrustedOrigins: () => ['http://localhost:1420'],
-  getValidatedOrigin: () => 'http://localhost:1420',
-  buildVerifyUrl: (origin: string, email: string, otp: string) => `${origin}/auth/verify?email=${email}&otp=${otp}`,
-  isDeepLinkPlatform: () => false,
 }))
 
 mock.module('@/waitlist/utils', () => ({
+  ...waitlistUtils,
   sendWaitlistNotReadyEmail: mockSendWaitlistNotReadyEmail,
   sendWaitlistJoinedEmail: mock(() => Promise.resolve()),
   sendWaitlistReminderEmail: mock(() => Promise.resolve()),
