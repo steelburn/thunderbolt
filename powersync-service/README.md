@@ -50,7 +50,7 @@ The config in `config/config.yaml` uses HS256 with that same secret (base64) and
 
 ## Sync rules
 
-Sync rules in `config/config.yaml` mirror the backend PowerSync tables and scope data by `user_id` from the JWT `sub` claim. When you add or change backend tables used by PowerSync, update the `sync_rules.content` section and the backend `VALID_TABLES` in `backend/src/api/powersync.ts`.
+Sync rules in `config/config.yaml` mirror the backend PowerSync tables and scope data by `user_id` from the JWT `sub` claim. When you add or change backend tables used by PowerSync, update the `sync_rules.content` section and the backend `validTables` in `backend/src/api/powersync.ts`.
 
 ## Stopping
 

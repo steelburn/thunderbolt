@@ -3,12 +3,12 @@ import type { Settings } from '@/config/settings'
 import { session as sessionTable, user as userTable } from '@/db/auth-schema'
 import type { db as DbType } from '@/db/client'
 import { devicesTable } from '@/db/schema'
-import { POWERSYNC_TABLE_NAMES } from '@shared/powersync-tables'
+import { powersyncTableNames } from '@shared/powersync-tables'
 import { jwt } from '@elysiajs/jwt'
 import { eq, sql } from 'drizzle-orm'
 import { Elysia, t } from 'elysia'
 
-const VALID_TABLES = new Set<string>(POWERSYNC_TABLE_NAMES)
+const validTables = new Set<string>(powersyncTableNames)
 
 /**
  * PowerSync operation types from the upload queue
@@ -42,12 +42,10 @@ const escapeValue = (value: unknown): string => {
  * The user_id is always set to the authenticated user to ensure data isolation.
  */
 const applyOperation = async (op: PowerSyncOperation, userId: string, database: typeof DbType): Promise<void> => {
-  if (!VALID_TABLES.has(op.type)) {
+  if (!validTables.has(op.type)) {
     console.warn(`Unknown table: ${op.type}`)
     return
   }
-
-  console.info(`Applying ${op.op} to ${op.type} with id=${op.id} for user=${userId}`)
 
   switch (op.op) {
     case 'PUT': {
@@ -68,9 +66,9 @@ const applyOperation = async (op: PowerSyncOperation, userId: string, database: 
           : 'DO NOTHING'
 
       const query = `INSERT INTO "${op.type}" (${columns}) VALUES (${values}) ON CONFLICT (id) ${updateClause}`
-      console.info(`SQL: ${query}`)
-      const result = await database.execute(sql.raw(query))
-      console.info(`Result:`, result)
+
+      await database.execute(sql.raw(query))
+
       break
     }
     case 'PATCH': {
@@ -86,17 +84,17 @@ const applyOperation = async (op: PowerSyncOperation, userId: string, database: 
         .join(', ')
 
       const query = `UPDATE "${op.type}" SET ${setClauses} WHERE id = ${escapeValue(op.id)} AND user_id = ${escapeValue(userId)}`
-      console.info(`SQL: ${query}`)
-      const result = await database.execute(sql.raw(query))
-      console.info(`Result:`, result)
+
+      await database.execute(sql.raw(query))
+
       break
     }
     case 'DELETE': {
       // DELETE - remove row (only if it belongs to this user)
       const query = `DELETE FROM "${op.type}" WHERE id = ${escapeValue(op.id)} AND user_id = ${escapeValue(userId)}`
-      console.info(`SQL: ${query}`)
-      const result = await database.execute(sql.raw(query))
-      console.info(`Result:`, result)
+
+      await database.execute(sql.raw(query))
+
       break
     }
   }
@@ -231,8 +229,6 @@ export const createPowerSyncRoutes = (auth: Auth, settings: Settings, database: 
           set.status = 400
           return { error: 'Invalid request: operations must be an array' }
         }
-
-        console.info(`Processing ${operations.length} PowerSync operations for user=${user.id}`)
 
         // Process operations sequentially to maintain order
         for (const op of operations) {

@@ -1,11 +1,11 @@
 /**
  * Single source of truth for PowerSync-synced table names and React Query invalidation.
- * Used by backend (VALID_TABLES), frontend (use-powersync-invalidation), and sync rules (config.yaml).
+ * Used by backend (validTables), frontend (use-powersync-invalidation), and sync rules (config.yaml).
  * When adding a table: add here, then to src/db/tables.ts, backend/src/db/powersync-schema.ts,
  * src/db/powersync/schema.ts, and powersync-service/config/config.yaml.
  */
 
-export const POWERSYNC_TABLE_NAMES = [
+export const powersyncTableNames = [
   'settings',
   'chat_threads',
   'chat_messages',
@@ -18,14 +18,14 @@ export const POWERSYNC_TABLE_NAMES = [
   'devices',
 ] as const
 
-export type PowerSyncTableName = (typeof POWERSYNC_TABLE_NAMES)[number]
+export type PowerSyncTableName = (typeof powersyncTableNames)[number]
 
 /**
  * Map of PowerSync table names to React Query keys to invalidate when the table changes.
- * Keys are type-checked against POWERSYNC_TABLE_NAMES; every table must have an entry.
+ * Keys are type-checked against powersyncTableNames; every table must have an entry.
  * Prefix keys (e.g. ['settings']) invalidate all queries starting with that prefix.
  */
-export const POWERSYNC_TABLE_TO_QUERY_KEYS: {
+export const powersyncTableToQueryKeys: {
   [K in PowerSyncTableName]: string[][]
 } = {
   settings: [['settings']],
