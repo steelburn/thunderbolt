@@ -25,7 +25,7 @@ export const chatThreadsTable = pgTable(
     triggeredBy: text('triggered_by'),
     wasTriggeredByAutomation: integer('was_triggered_by_automation').default(0),
     contextSize: integer('context_size'),
-    deletedAt: integer('deleted_at'),
+    deletedAt: text('deleted_at'),
     userId: text('user_id'),
   },
   (table) => [
@@ -47,7 +47,7 @@ export const chatMessagesTable = pgTable(
     parentId: text('parent_id'),
     cache: text('cache'),
     metadata: text('metadata'),
-    deletedAt: integer('deleted_at'),
+    deletedAt: text('deleted_at'),
     userId: text('user_id'),
   },
   (table) => [
@@ -65,7 +65,7 @@ export const tasksTable = pgTable(
     order: integer('order').default(0),
     isComplete: integer('is_complete').default(0),
     defaultHash: text('default_hash'),
-    deletedAt: integer('deleted_at'),
+    deletedAt: text('deleted_at'),
     userId: text('user_id'),
   },
   (table) => [
@@ -93,7 +93,7 @@ export const modelsTable = pgTable(
     startWithReasoning: integer('start_with_reasoning').default(0),
     supportsParallelToolCalls: integer('supports_parallel_tool_calls').default(1),
     contextWindow: integer('context_window'),
-    deletedAt: integer('deleted_at'),
+    deletedAt: text('deleted_at'),
     defaultHash: text('default_hash'),
     vendor: text('vendor'),
     description: text('description'),
@@ -118,7 +118,7 @@ export const mcpServersTable = pgTable(
     enabled: integer('enabled').default(1),
     createdAt: integer('created_at').default(sql`extract(epoch from now())::integer`),
     updatedAt: integer('updated_at').default(sql`extract(epoch from now())::integer`),
-    deletedAt: integer('deleted_at'),
+    deletedAt: text('deleted_at'),
     userId: text('user_id'),
   },
   (table) => [
@@ -135,7 +135,7 @@ export const promptsTable = pgTable(
     title: text('title'),
     prompt: text('prompt'),
     modelId: text('model_id'),
-    deletedAt: integer('deleted_at'),
+    deletedAt: text('deleted_at'),
     defaultHash: text('default_hash'),
     userId: text('user_id'),
   },
@@ -154,7 +154,7 @@ export const triggersTable = pgTable(
     triggerTime: text('trigger_time'),
     promptId: text('prompt_id'),
     isEnabled: integer('is_enabled').default(1),
-    deletedAt: integer('deleted_at'),
+    deletedAt: text('deleted_at'),
     userId: text('user_id'),
   },
   (table) => [
@@ -175,7 +175,7 @@ export const modesTable = pgTable(
     isDefault: integer('is_default').default(0),
     order: integer('order').default(0),
     defaultHash: text('default_hash'),
-    deletedAt: integer('deleted_at'),
+    deletedAt: text('deleted_at'),
     userId: text('user_id'),
   },
   (table) => [

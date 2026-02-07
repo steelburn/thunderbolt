@@ -1,5 +1,5 @@
 {
-  "id": "72b236bf-63d4-40f6-8459-8e71317c40e4",
+  "id": "d9256ff9-fcb1-4144-95bd-e9737ffc4e50",
   "prevId": "9187ccb1-e0ab-486a-9f1d-90641574ca41",
   "version": "7",
   "dialect": "postgresql",
@@ -510,7 +510,7 @@
         },
         "deleted_at": {
           "name": "deleted_at",
-          "type": "integer",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -590,7 +590,7 @@
         },
         "deleted_at": {
           "name": "deleted_at",
-          "type": "integer",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -741,7 +741,7 @@
         },
         "deleted_at": {
           "name": "deleted_at",
-          "type": "integer",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -867,7 +867,7 @@
         },
         "deleted_at": {
           "name": "deleted_at",
-          "type": "integer",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -977,7 +977,7 @@
         },
         "deleted_at": {
           "name": "deleted_at",
-          "type": "integer",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -1043,7 +1043,7 @@
         },
         "deleted_at": {
           "name": "deleted_at",
-          "type": "integer",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -1167,7 +1167,7 @@
         },
         "deleted_at": {
           "name": "deleted_at",
-          "type": "integer",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -1240,7 +1240,7 @@
         },
         "deleted_at": {
           "name": "deleted_at",
-          "type": "integer",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
