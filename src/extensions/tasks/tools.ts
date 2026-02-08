@@ -1,6 +1,4 @@
-import { deleteTasks as deleteTasksDal, getAllTasks } from '@/dal'
-import { DatabaseSingleton } from '@/db/singleton'
-import { tasksTable } from '@/db/tables'
+import { createTasks, deleteTasks as deleteTasksDal, getAllTasks } from '@/dal'
 import { v7 as uuidv7 } from 'uuid'
 import { z } from 'zod'
 
@@ -12,19 +10,14 @@ export const addTasks = {
     tasks: z.array(z.string()).describe("The tasks to add to the user's task (to do) list."),
   }),
   execute: async (params: { tasks: string[] }) => {
-    const db = DatabaseSingleton.instance.db
-    const tasks = await db
-      .insert(tasksTable)
-      .values(
-        params.tasks.map((task: string) => ({
-          id: uuidv7(),
-          item: task,
-          order: 0,
-          isComplete: 0,
-        })),
-      )
-      .returning()
-    return tasks
+    const data = params.tasks.map((item) => ({
+      id: uuidv7(),
+      item,
+      order: 0,
+      isComplete: 0,
+    }))
+    await createTasks(data)
+    return data
   },
 }
 

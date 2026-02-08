@@ -50,6 +50,7 @@ export {
 // Tasks
 export {
   createTask,
+  createTasks,
   deleteTask,
   deleteTasks,
   getAllTasks,

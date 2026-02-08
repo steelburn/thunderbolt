@@ -1,9 +1,12 @@
+import { clearKey, generateEncryptionKey, setEncryptionKey } from '@/crypto'
 import { DatabaseSingleton } from '@/db/singleton'
 import { tasksTable } from '@/db/tables'
+import { eq } from 'drizzle-orm'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test'
 import { v7 as uuidv7 } from 'uuid'
 import {
   createTask,
+  createTasks,
   deleteTask,
   deleteTasks,
   getAllTasks,
@@ -15,9 +18,11 @@ import { resetTestDatabase, setupTestDatabase, teardownTestDatabase } from './te
 
 beforeAll(async () => {
   await setupTestDatabase()
+  await setEncryptionKey(await generateEncryptionKey())
 })
 
 afterAll(async () => {
+  await clearKey()
   await teardownTestDatabase()
 })
 
@@ -422,9 +427,11 @@ describe('Tasks DAL', () => {
       // Try to update defaultHash (should be ignored)
       await updateTask(taskId, { item: 'Updated', defaultHash: 'new-hash' } as Parameters<typeof updateTask>[1])
 
-      // Verify defaultHash was not changed
-      const task = await db.select().from(tasksTable).get()
-      expect(task?.defaultHash).toBe('original-hash')
+      // Verify defaultHash was not changed (raw select); item is encrypted in DB, check via DAL
+      const raw = await db.select().from(tasksTable).where(eq(tasksTable.id, taskId)).get()
+      expect(raw?.defaultHash).toBe('original-hash')
+      const tasks = await getAllTasks()
+      const task = tasks.find((t) => t.id === taskId)
       expect(task?.item).toBe('Updated')
     })
   })
@@ -467,6 +474,26 @@ describe('Tasks DAL', () => {
 
       const count = await getIncompleteTasksCount()
       expect(count).toBe(0)
+    })
+  })
+
+  describe('createTasks', () => {
+    it('should create multiple tasks in one batch (encrypt + bulk insert)', async () => {
+      const data = [
+        { id: uuidv7(), item: 'Batch task 1', order: 0, isComplete: 0 },
+        { id: uuidv7(), item: 'Batch task 2', order: 0, isComplete: 0 },
+      ]
+      await createTasks(data)
+
+      const tasks = await getAllTasks()
+      expect(tasks).toHaveLength(2)
+      expect(tasks.map((t) => t.item).sort()).toEqual(['Batch task 1', 'Batch task 2'])
+    })
+
+    it('should handle empty array', async () => {
+      await expect(createTasks([])).resolves.toBeUndefined()
+      const tasks = await getAllTasks()
+      expect(tasks).toHaveLength(0)
     })
   })
 })
