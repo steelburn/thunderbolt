@@ -298,6 +298,104 @@ describe('PowerSync API', () => {
       expect(rows[0]?.userId).toBe(userId)
     })
 
+    it('ignores user_id and id in PUT payload, always uses session user', async () => {
+      const userId = 'user-put-owns-row'
+      const now = new Date()
+      const expiresAt = new Date(now.getTime() + 3600 * 1000)
+
+      await db.insert(userTable).values({
+        id: userId,
+        name: 'Owner',
+        email: 'owner@example.com',
+        emailVerified: true,
+        createdAt: now,
+        updatedAt: now,
+      })
+      await db.insert(sessionTable).values({
+        id: 'session-put-owns',
+        expiresAt,
+        token: 'bearer-put-owns',
+        createdAt: now,
+        updatedAt: now,
+        userId,
+      })
+
+      const response = await app.handle(
+        new Request('http://localhost/powersync/upload', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer bearer-put-owns',
+          },
+          body: JSON.stringify({
+            operations: [
+              {
+                op: 'PUT' as const,
+                type: 'settings',
+                id: 'owned_setting',
+                data: { value: 'correct', user_id: 'other-user-id', id: 'ignored_id' },
+              },
+            ],
+          }),
+        }),
+      )
+      expect(response.status).toBe(200)
+
+      const rows = await db.select().from(settingsTable).where(eq(settingsTable.key, 'owned_setting'))
+      expect(rows).toHaveLength(1)
+      expect(rows[0]?.userId).toBe(userId)
+      expect(rows[0]?.value).toBe('correct')
+      expect(rows[0]?.key).toBe('owned_setting')
+    })
+
+    it('user B cannot update or overwrite user A setting (WHERE user_id validates)', async () => {
+      const userA = 'user-a-same-setting'
+      const userB = 'user-b-same-setting'
+      const now = new Date()
+      const expiresAt = new Date(now.getTime() + 3600 * 1000)
+
+      await db.insert(userTable).values([
+        { id: userA, name: 'User A', email: 'a@example.com', emailVerified: true, createdAt: now, updatedAt: now },
+        { id: userB, name: 'User B', email: 'b@example.com', emailVerified: true, createdAt: now, updatedAt: now },
+      ])
+      await db.insert(sessionTable).values([
+        { id: 'session-a-same', expiresAt, token: 'bearer-a-same', createdAt: now, updatedAt: now, userId: userA },
+        { id: 'session-b-same', expiresAt, token: 'bearer-b-same', createdAt: now, updatedAt: now, userId: userB },
+      ])
+
+      await db.insert(settingsTable).values({
+        key: 'shared_key',
+        value: 'user-a-value',
+        userId: userA,
+      })
+
+      const response = await app.handle(
+        new Request('http://localhost/powersync/upload', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer bearer-b-same',
+          },
+          body: JSON.stringify({
+            operations: [
+              {
+                op: 'PUT' as const,
+                type: 'settings',
+                id: 'shared_key',
+                data: { value: 'user-b-attempt', user_id: userA },
+              },
+            ],
+          }),
+        }),
+      )
+      expect(response.status).toBe(200)
+
+      const rows = await db.select().from(settingsTable).where(eq(settingsTable.key, 'shared_key'))
+      expect(rows).toHaveLength(1)
+      expect(rows[0]?.userId).toBe(userA)
+      expect(rows[0]?.value).toBe('user-a-value')
+    })
+
     it('returns 200 and applies PATCH operation', async () => {
       const userId = 'user-upload-patch'
       const now = new Date()
@@ -351,6 +449,60 @@ describe('PowerSync API', () => {
       const rows = await db.select().from(settingsTable).where(eq(settingsTable.key, 'patch_setting'))
       expect(rows).toHaveLength(1)
       expect(rows[0]?.value).toBe('updated_value')
+    })
+
+    it('ignores user_id and id in PATCH payload', async () => {
+      const userId = 'user-patch-owns'
+      const now = new Date()
+      const expiresAt = new Date(now.getTime() + 3600 * 1000)
+
+      await db.insert(userTable).values({
+        id: userId,
+        name: 'Patch Owner',
+        email: 'patch-owner@example.com',
+        emailVerified: true,
+        createdAt: now,
+        updatedAt: now,
+      })
+      await db.insert(sessionTable).values({
+        id: 'session-patch-owns',
+        expiresAt,
+        token: 'bearer-patch-owns',
+        createdAt: now,
+        updatedAt: now,
+        userId,
+      })
+      await db.insert(settingsTable).values({
+        key: 'patch_owned',
+        value: 'initial',
+        userId,
+      })
+
+      const response = await app.handle(
+        new Request('http://localhost/powersync/upload', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer bearer-patch-owns',
+          },
+          body: JSON.stringify({
+            operations: [
+              {
+                op: 'PATCH' as const,
+                type: 'settings',
+                id: 'patch_owned',
+                data: { value: 'updated', user_id: 'other-user', id: 'other_id' },
+              },
+            ],
+          }),
+        }),
+      )
+      expect(response.status).toBe(200)
+
+      const rows = await db.select().from(settingsTable).where(eq(settingsTable.key, 'patch_owned'))
+      expect(rows).toHaveLength(1)
+      expect(rows[0]?.userId).toBe(userId)
+      expect(rows[0]?.value).toBe('updated')
     })
 
     it('returns 200 and applies DELETE operation', async () => {

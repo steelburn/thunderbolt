@@ -75,8 +75,11 @@ const applyOperation = async (op: PowerSyncOperation, userId: string, database: 
 
   switch (op.op) {
     case 'PUT': {
-      // INSERT or UPDATE - upsert the row. Only allow valid columns; id and user_id are forced.
-      const rawData: Record<string, unknown> = { ...op.data, id: op.id, user_id: userId }
+      // id and user_id are never taken from payload; always use op.id and session userId.
+      const payload = { ...op.data } as Record<string, unknown>
+      delete payload.id
+      delete payload.user_id
+      const rawData: Record<string, unknown> = { ...payload, id: op.id, user_id: userId }
       const allData: Record<string, unknown> = {}
       for (const k of Object.keys(rawData)) {
         if (validColumns.has(k)) {
@@ -86,10 +89,12 @@ const applyOperation = async (op: PowerSyncOperation, userId: string, database: 
       const columns = Object.keys(allData).map(escapeIdentifier).join(', ')
       const values = Object.values(allData).map(escapeValue).join(', ')
 
-      const updateColumns = Object.keys(allData).filter((k) => k !== 'id')
+      // Never SET id or user_id from EXCLUDED; always restrict UPDATE to current user's row
+      const updateColumns = Object.keys(allData).filter((k) => k !== 'id' && k !== 'user_id')
+      const userWhere = `WHERE ${tableIdent}.${escapeIdentifier('user_id')} = ${escapeValue(userId)}`
       const updateClause =
         updateColumns.length > 0
-          ? `DO UPDATE SET ${updateColumns.map((k) => `${escapeIdentifier(k)} = EXCLUDED.${escapeIdentifier(k)}`).join(', ')} WHERE ${tableIdent}.${escapeIdentifier('user_id')} = ${escapeValue(userId)}`
+          ? `DO UPDATE SET ${updateColumns.map((k) => `${escapeIdentifier(k)} = EXCLUDED.${escapeIdentifier(k)}`).join(', ')} ${userWhere}`
           : 'DO NOTHING'
 
       const query = `INSERT INTO ${tableIdent} (${columns}) VALUES (${values}) ON CONFLICT (id) ${updateClause}`
@@ -103,8 +108,11 @@ const applyOperation = async (op: PowerSyncOperation, userId: string, database: 
         console.warn('PATCH operation missing data')
         return
       }
-      const dataWithUserId = { ...op.data, user_id: userId }
-      const setClauses = Object.entries(dataWithUserId)
+      // Never SET id or user_id from payload; only update other columns.
+      const patchPayload = { ...op.data } as Record<string, unknown>
+      delete patchPayload.id
+      delete patchPayload.user_id
+      const setClauses = Object.entries(patchPayload)
         .filter(([key]) => validColumns.has(key))
         .map(([key, value]) => `${escapeIdentifier(key)} = ${escapeValue(value)}`)
         .join(', ')
