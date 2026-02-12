@@ -119,7 +119,119 @@ describe('PowerSync API', () => {
       expect(data).toEqual({ code: 'DEVICE_DISCONNECTED' })
     })
 
-    it('returns token and powerSyncUrl when authenticated via session', async () => {
+    it('returns 400 when x-device-id is missing', async () => {
+      const userId = 'user-no-device-id'
+      const now = new Date()
+      const expiresAt = new Date(now.getTime() + 3600 * 1000)
+
+      await db.insert(userTable).values({
+        id: userId,
+        name: 'No Device ID User',
+        email: 'no-device-id@example.com',
+        emailVerified: true,
+        createdAt: now,
+        updatedAt: now,
+      })
+
+      await db.insert(sessionTable).values({
+        id: 'session-no-device-id',
+        expiresAt,
+        token: 'bearer-no-device-id',
+        createdAt: now,
+        updatedAt: now,
+        userId,
+      })
+
+      const response = await app.handle(
+        new Request('http://localhost/powersync/token', {
+          headers: { Authorization: 'Bearer bearer-no-device-id' },
+        }),
+      )
+      expect(response.status).toBe(400)
+      const data = await response.json()
+      expect(data).toEqual({ code: 'DEVICE_ID_REQUIRED' })
+    })
+
+    it('returns 400 when x-device-id is empty', async () => {
+      const userId = 'user-empty-device-id'
+      const now = new Date()
+      const expiresAt = new Date(now.getTime() + 3600 * 1000)
+
+      await db.insert(userTable).values({
+        id: userId,
+        name: 'Empty Device ID User',
+        email: 'empty-device-id@example.com',
+        emailVerified: true,
+        createdAt: now,
+        updatedAt: now,
+      })
+
+      await db.insert(sessionTable).values({
+        id: 'session-empty-device-id',
+        expiresAt,
+        token: 'bearer-empty-device-id',
+        createdAt: now,
+        updatedAt: now,
+        userId,
+      })
+
+      const response = await app.handle(
+        new Request('http://localhost/powersync/token', {
+          headers: {
+            Authorization: 'Bearer bearer-empty-device-id',
+            'x-device-id': '   ',
+          },
+        }),
+      )
+      expect(response.status).toBe(400)
+      const data = await response.json()
+      expect(data).toEqual({ code: 'DEVICE_ID_REQUIRED' })
+    })
+
+    it('revoked device cannot bypass by omitting x-device-id', async () => {
+      const userId = 'user-revoked-bypass'
+      const now = new Date()
+      const expiresAt = new Date(now.getTime() + 3600 * 1000)
+
+      await db.insert(userTable).values({
+        id: userId,
+        name: 'Revoked Bypass User',
+        email: 'revoked-bypass@example.com',
+        emailVerified: true,
+        createdAt: now,
+        updatedAt: now,
+      })
+
+      await db.insert(sessionTable).values({
+        id: 'session-revoked-bypass',
+        expiresAt,
+        token: 'bearer-revoked-bypass',
+        createdAt: now,
+        updatedAt: now,
+        userId,
+      })
+
+      const revokedAt = Math.floor(Date.now() / 1000)
+      await db.insert(devicesTable).values({
+        id: 'revoked-bypass-device',
+        userId,
+        name: 'Revoked Device',
+        lastSeen: revokedAt - 60,
+        createdAt: revokedAt - 120,
+        revokedAt,
+      })
+
+      const response = await app.handle(
+        new Request('http://localhost/powersync/token', {
+          headers: { Authorization: 'Bearer bearer-revoked-bypass' },
+        }),
+      )
+      expect(response.status).toBe(400)
+      const data = await response.json()
+      expect(data).toEqual({ code: 'DEVICE_ID_REQUIRED' })
+    })
+
+    it('returns token and powerSyncUrl when authenticated via session with x-device-id', async () => {
       const userId = 'user-powersync-token'
       const now = new Date()
       const expiresAt = new Date(now.getTime() + 3600 * 1000)
@@ -144,7 +256,10 @@ describe('PowerSync API', () => {
 
       const response = await app.handle(
         new Request('http://localhost/powersync/token', {
-          headers: { Authorization: 'Bearer bearer-powersync-valid' },
+          headers: {
+            Authorization: 'Bearer bearer-powersync-valid',
+            'x-device-id': 'device-session-token',
+          },
         }),
       )
       expect(response.status).toBe(200)

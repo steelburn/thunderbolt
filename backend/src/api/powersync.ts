@@ -46,6 +46,64 @@ const toSchemaRecord = (
   return out
 }
 
+type IssuePowerSyncTokenResult =
+  | { ok: true; token: string; expiresAt: string; powerSyncUrl: string }
+  | { ok: false; status: 400; body: { code: 'DEVICE_ID_REQUIRED' } }
+  | { ok: false; status: 403; body: { code: 'DEVICE_DISCONNECTED' } }
+
+/**
+ * Shared logic for issuing a PowerSync JWT: device revocation check, JWT signing, device upsert.
+ * Used by both session-based and bearer-only token paths.
+ * Requires x-device-id so revocation can always be enforced; a revoked device cannot bypass by omitting it.
+ */
+const issuePowerSyncToken = async (
+  userId: string,
+  request: Request,
+  powersyncJwt: { sign: (payload: { sub: string; user_id: string }) => Promise<string> },
+  settings: Settings,
+  database: typeof DbType,
+): Promise<IssuePowerSyncTokenResult> => {
+  const deviceId = request.headers.get('x-device-id')?.trim()
+  if (!deviceId) {
+    return { ok: false, status: 400, body: { code: 'DEVICE_ID_REQUIRED' } }
+  }
+
+  const deviceRow = await database
+    .select({ revokedAt: devicesTable.revokedAt })
+    .from(devicesTable)
+    .where(and(eq(devicesTable.id, deviceId), eq(devicesTable.userId, userId)))
+    .limit(1)
+    .then((rows) => rows[0])
+  if (deviceRow?.revokedAt != null) {
+    return { ok: false, status: 403, body: { code: 'DEVICE_DISCONNECTED' } }
+  }
+
+  const token = await powersyncJwt.sign({ sub: userId, user_id: userId })
+  const expiresAt = new Date(Date.now() + settings.powersyncTokenExpirySeconds * 1000).toISOString()
+
+  const deviceName = request.headers.get('x-device-name')
+  const isDeviceNameValid = deviceName && deviceName.length > 0 && deviceName.length <= 100
+  if (isDeviceNameValid) {
+    const now = Math.floor(Date.now() / 1000)
+    await database
+      .insert(devicesTable)
+      .values({
+        id: deviceId,
+        userId,
+        name: deviceName,
+        lastSeen: now,
+        createdAt: now,
+      })
+      .onConflictDoUpdate({
+        target: devicesTable.id,
+        set: { lastSeen: now, name: deviceName },
+        where: eq(devicesTable.userId, userId),
+      })
+  }
+
+  return { ok: true, token, expiresAt, powerSyncUrl: settings.powersyncUrl }
+}
+
 /**
  * Apply a single PowerSync operation using Drizzle's query builder (parameterized, no raw SQL).
  * The user_id is always set to the authenticated user to ensure data isolation.
@@ -122,7 +180,8 @@ const applyOperation = async (op: PowerSyncOperation, userId: string, database: 
  * GET /token: Issues a PowerSync JWT so the client can connect. Two auth paths:
  * - Session (cookie/header): user from derive; we check device revoked, upsert device, then issue token.
  * - Bearer token only (credential refresh): resolve session → user; 410 if user deleted, else issue new JWT and return 200.
- * Status codes: 410 = account deleted, 403 = device revoked (client should reset); 401 = no/invalid Bearer token.
+ * Requires x-device-id so revocation is always enforced (revoked device cannot bypass by omitting it).
+ * Status codes: 400 = x-device-id missing/empty; 410 = account deleted; 403 = device revoked (client should reset); 401 = no/invalid Bearer token.
  *
  * PUT /upload: Applies batched CRUD from PowerSync; requires authenticated user.
  *
@@ -156,49 +215,12 @@ export const createPowerSyncRoutes = (auth: Auth, settings: Settings, database: 
 
       // Path 1: Authenticated via session. Issue PowerSync JWT; check device revoked, then upsert device.
       if (user) {
-        const deviceId = request.headers.get('x-device-id')
-        if (deviceId) {
-          const deviceRow = await database
-            .select({ revokedAt: devicesTable.revokedAt })
-            .from(devicesTable)
-            .where(and(eq(devicesTable.id, deviceId), eq(devicesTable.userId, user.id)))
-            .limit(1)
-            .then((rows) => rows[0])
-          if (deviceRow?.revokedAt != null) {
-            set.status = 403
-            return { code: 'DEVICE_DISCONNECTED' }
-          }
+        const result = await issuePowerSyncToken(user.id, request, powersyncJwt, settings, database)
+        if (!result.ok) {
+          set.status = result.status
+          return result.body
         }
-
-        const token = await powersyncJwt.sign({
-          sub: user.id,
-          user_id: user.id,
-        })
-        const expiresAt = new Date(Date.now() + settings.powersyncTokenExpirySeconds * 1000).toISOString()
-
-        const deviceName = request.headers.get('x-device-name')
-        const isDeviceNameValid = deviceName && deviceName.length > 0 && deviceName.length <= 100
-
-        if (deviceId && isDeviceNameValid) {
-          const now = Math.floor(Date.now() / 1000)
-          await database
-            .insert(devicesTable)
-            // Upsert device for Settings > Devices list and last-seen; synced via PowerSync.
-            .values({
-              id: deviceId,
-              userId: user.id,
-              name: deviceName,
-              lastSeen: now,
-              createdAt: now,
-            })
-            .onConflictDoUpdate({
-              target: devicesTable.id,
-              set: { lastSeen: now, name: deviceName },
-              where: eq(devicesTable.userId, user.id),
-            })
-        }
-
-        return { token, expiresAt, powerSyncUrl: settings.powersyncUrl }
+        return result
       }
 
       // Path 2: No session; Bearer token only. Resolve session → user; 410 if user deleted (e.g. account deleted elsewhere).
@@ -233,47 +255,12 @@ export const createPowerSyncRoutes = (auth: Auth, settings: Settings, database: 
 
       // Token refresh: valid Bearer + user exists → issue new PowerSync JWT (same as Path 1).
       const userId = sessionRow.userId
-      const deviceId = request.headers.get('x-device-id')
-      if (deviceId) {
-        const deviceRow = await database
-          .select({ revokedAt: devicesTable.revokedAt })
-          .from(devicesTable)
-          .where(and(eq(devicesTable.id, deviceId), eq(devicesTable.userId, userId)))
-          .limit(1)
-          .then((rows) => rows[0])
-        if (deviceRow?.revokedAt != null) {
-          set.status = 403
-          return { code: 'DEVICE_DISCONNECTED' }
-        }
+      const result = await issuePowerSyncToken(userId, request, powersyncJwt, settings, database)
+      if (!result.ok) {
+        set.status = result.status
+        return result.body
       }
-
-      const token = await powersyncJwt.sign({
-        sub: userId,
-        user_id: userId,
-      })
-      const expiresAt = new Date(Date.now() + settings.powersyncTokenExpirySeconds * 1000).toISOString()
-
-      const deviceName = request.headers.get('x-device-name')
-      const isDeviceNameValid = deviceName && deviceName.length > 0 && deviceName.length <= 100
-      if (deviceId && isDeviceNameValid) {
-        const now = Math.floor(Date.now() / 1000)
-        await database
-          .insert(devicesTable)
-          .values({
-            id: deviceId,
-            userId,
-            name: deviceName,
-            lastSeen: now,
-            createdAt: now,
-          })
-          .onConflictDoUpdate({
-            target: devicesTable.id,
-            set: { lastSeen: now, name: deviceName },
-            where: eq(devicesTable.userId, userId),
-          })
-      }
-
-      return { token, expiresAt, powerSyncUrl: settings.powersyncUrl }
+      return result
     })
     .put(
       '/upload',
