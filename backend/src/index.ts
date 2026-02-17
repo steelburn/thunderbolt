@@ -1,3 +1,5 @@
+import 'dotenv/config'
+
 import { createMainRoutes } from '@/api/routes'
 import { createBetterAuthPlugin } from '@/auth/elysia-plugin'
 import { createGoogleAuthRoutes } from '@/auth/google'
@@ -14,6 +16,7 @@ import { createWaitlistRoutes } from '@/waitlist/routes'
 import type { AppDeps } from '@/types'
 import { cors } from '@elysiajs/cors'
 import { Elysia } from 'elysia'
+import { node } from '@elysiajs/node'
 
 /**
  * Create the main Elysia application
@@ -30,8 +33,12 @@ export const createApp = async (deps?: AppDeps) => {
     database = db
   }
 
+  // Auto-detect runtime and use appropriate adapter
+  const isBun = typeof Bun !== 'undefined'
+
   const app = new Elysia({
     prefix: '/v1',
+    ...(isBun ? {} : { adapter: node() }), // Only use Node adapter when on Node.js
   })
 
   if (process.env.NODE_ENV !== 'production') {
@@ -151,6 +158,12 @@ const startServer = async () => {
     })
   } catch (error) {
     log.error({ error }, 'Failed to start server')
+    // Also log to console in case pino serialization fails
+    console.error('Startup error details:', error)
+    if (error instanceof Error) {
+      console.error('Error message:', error.message)
+      console.error('Error stack:', error.stack)
+    }
     process.exit(1)
   }
 }

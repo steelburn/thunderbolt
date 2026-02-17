@@ -193,9 +193,12 @@ const getTinfoilClient = (fetchFn?: typeof fetch): TinfoilAI => {
   }
 
   // TinfoilAI is OpenAI-compatible and includes enclave verification
+  // Auto-detect runtime: EHBP in Node.js, TLS in Bun (X25519 not supported)
+  const isBun = typeof Bun !== 'undefined'
+
   const client = new TinfoilAI({
     apiKey: settings.tinfoilApiKey,
-    transport: 'tls', // Use TLS transport instead of EHBP (which requires X25519)
+    ...(isBun && { transport: 'tls' as const }), // Force TLS in Bun
     ...(fetchFn && { fetch: fetchFn }),
   })
 

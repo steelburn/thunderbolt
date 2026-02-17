@@ -4,12 +4,14 @@
   "description": "Thunderbolt Backend rewritten with TypeScript + Elysia",
   "type": "module",
   "scripts": {
-    "dev": "bun run --watch src/index.ts",
+    "dev": "tsx watch src/index.ts",
+    "dev:bun": "bun run --watch src/index.ts",
     "build": "bun build --compile --minify-whitespace --minify-syntax --target bun --outfile server src/cluster.ts",
-    "start": "./server",
+    "start": "node --import tsx src/cluster.ts",
+    "start:bun": "./server",
     "test": "bun test",
     "test:watch": "bun test --watch",
-    "type-check": "bun tsc --noEmit",
+    "type-check": "tsc --noEmit",
     "lint": "eslint src",
     "format": "prettier --write src",
     "db": "drizzle-kit",
@@ -18,6 +20,7 @@
   "dependencies": {
     "@electric-sql/pglite": "^0.3.14",
     "@elysiajs/cors": "^1.4.0",
+    "@elysiajs/node": "^1.4.5",
     "@elysiajs/opentelemetry": "^1.4.0",
     "@elysiajs/static": "^1.4.0",
     "@elysiajs/swagger": "^1.3.1",
@@ -30,7 +33,7 @@
     "bun-types": "^1.2.22",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.44.7",
-    "elysia": "^1.4.7",
+    "elysia": "^1.4.25",
     "exa-js": "^1.0.11",
     "openai": "^5.22.1",
     "pino": "^9.11.0",
@@ -42,6 +45,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite-socket": "^0.0.19",
+    "@types/node": "^25.2.3",
     "@typescript-eslint/eslint-plugin": "^6.19.0",
     "@typescript-eslint/parser": "^6.19.0",
     "drizzle-kit": "^0.31.7",
@@ -56,6 +60,7 @@
     "typescript": "^5.0.0"
   },
   "engines": {
+    "node": ">=20.0.0",
     "bun": ">=1.0.0"
   }
 }
