@@ -47,5 +47,3 @@ mise.toml
 # iOS fastlane local bundle
 src-tauri/gen/apple/vendor/
 src-tauri/gen/apple/.bundle/
-
-package-lock.json
