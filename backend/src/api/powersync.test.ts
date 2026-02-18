@@ -1,7 +1,7 @@
 import type { Settings } from '@/config/settings'
 import { createBetterAuthPlugin } from '@/auth/elysia-plugin'
 import { session as sessionTable, user as userTable } from '@/db/auth-schema'
-import { devicesTable, settingsTable } from '@/db/schema'
+import { devicesTable, promptsTable, settingsTable } from '@/db/schema'
 import { createTestDb } from '@/test-utils/db'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
@@ -778,6 +778,65 @@ describe('PowerSync API', () => {
       expect(rows).toHaveLength(1)
       expect(rows[0]?.userId).toBe(userId)
       expect(rows[0]?.value).toBe('updated')
+    })
+
+    it('converts deleted_at ISO string to Date in PATCH (prompts soft delete)', async () => {
+      const userId = 'user-patch-deleted-at'
+      const now = new Date()
+      const expiresAt = new Date(now.getTime() + 3600 * 1000)
+
+      await db.insert(userTable).values({
+        id: userId,
+        name: 'Patch DeletedAt User',
+        email: 'patch-deleted-at@example.com',
+        emailVerified: true,
+        createdAt: now,
+        updatedAt: now,
+      })
+      await db.insert(sessionTable).values({
+        id: 'session-patch-deleted-at',
+        expiresAt,
+        token: 'bearer-patch-deleted-at',
+        createdAt: now,
+        updatedAt: now,
+        userId,
+      })
+      await db.insert(promptsTable).values({
+        id: 'prompt-to-soft-delete',
+        title: 'My Prompt',
+        prompt: 'Hello',
+        modelId: 'gpt-4',
+        userId,
+      })
+
+      const deletedAtIso = '2026-02-18T16:41:12.428Z'
+      const response = await app.handle(
+        new Request('http://localhost/powersync/upload', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer bearer-patch-deleted-at',
+          },
+          body: JSON.stringify({
+            operations: [
+              {
+                op: 'PATCH' as const,
+                type: 'prompts',
+                id: 'prompt-to-soft-delete',
+                data: { deleted_at: deletedAtIso, model_id: null, prompt: null, title: null },
+              },
+            ],
+          }),
+        }),
+      )
+      expect(response.status).toBe(200)
+
+      const rows = await db.select().from(promptsTable).where(eq(promptsTable.id, 'prompt-to-soft-delete'))
+      expect(rows).toHaveLength(1)
+      expect(rows[0]?.deletedAt).toEqual(new Date(deletedAtIso))
+      expect(rows[0]?.modelId).toBeNull()
+      expect(rows[0]?.prompt).toBeNull()
+      expect(rows[0]?.title).toBeNull()
     })
 
     it('returns 200 and applies DELETE operation', async () => {
