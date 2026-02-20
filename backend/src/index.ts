@@ -87,10 +87,10 @@ export const createApp = async (deps?: AppDeps) => {
       .get('/attestation', async () => {
         try {
           // Add timeout to prevent hanging
-          const ATTESTATION_TIMEOUT_MS = 10_000 // 10 seconds
+          const attestationTimeoutMs = 10_000 // 10 seconds
 
           const response = await fetch('https://atc.tinfoil.sh/attestation', {
-            signal: AbortSignal.timeout(ATTESTATION_TIMEOUT_MS),
+            signal: AbortSignal.timeout(attestationTimeoutMs),
           })
 
           if (!response.ok) {
@@ -113,13 +113,12 @@ export const createApp = async (deps?: AppDeps) => {
             },
           })
         } catch (error) {
-          // Log error but return a response instead of throwing
-          // This prevents attestation endpoint failures from crashing the app
+          // Log full error details for debugging
           console.error('Tinfoil attestation fetch failed:', error)
+          // Return generic error to frontend (don't expose infrastructure details)
           return new Response(
             JSON.stringify({
               error: 'Failed to fetch Tinfoil attestation bundle',
-              message: error instanceof Error ? error.message : 'Unknown error',
             }),
             {
               status: 502,

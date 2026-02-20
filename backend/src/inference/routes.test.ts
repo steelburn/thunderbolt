@@ -278,7 +278,7 @@ describe('Inference Routes', () => {
       expect(mockCreateCompletion).not.toHaveBeenCalled()
     })
 
-    it('should take EHBP path when X-Tinfoil-Enclave-Url and Ehbp-Encapsulated-Key are present', async () => {
+    it('should take EHBP path when X-Tinfoil-Enclave-Url (https) and Ehbp-Encapsulated-Key are present', async () => {
       const response = await app.handle(
         new Request('http://localhost/chat/completions', {
           method: 'POST',
@@ -292,7 +292,28 @@ describe('Inference Routes', () => {
       )
 
       expect(mockCreateCompletion).not.toHaveBeenCalled()
-      expect(response.status).toBeGreaterThanOrEqual(500)
+      expect(response.status).toBeGreaterThanOrEqual(400)
+    })
+
+    it('should not take EHBP path when X-Tinfoil-Enclave-Url uses http (avoids port probing)', async () => {
+      const response = await app.handle(
+        new Request('http://localhost/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Tinfoil-Enclave-Url': 'http://inference.tinfoil.sh:8080',
+            'Ehbp-Encapsulated-Key': 'a'.repeat(64),
+          },
+          body: JSON.stringify({
+            model: 'mistral-large-3',
+            messages: [{ role: 'user', content: 'Hi' }],
+            stream: true,
+          }),
+        }),
+      )
+
+      expect(mockCreateCompletion).toHaveBeenCalled()
+      expect(response.status).toBe(200)
     })
 
     it('should reject unsupported models', async () => {

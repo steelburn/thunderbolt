@@ -1,10 +1,12 @@
+import { getCorsOrigins, getSettings } from '@/config/settings'
 import { safeErrorHandler } from '@/middleware/error-handling'
 import { isPostHogConfigured } from '@/posthog/client'
 import { createSSEStreamFromCompletion } from '@/utils/streaming'
 import type { OpenAI as PostHogOpenAI } from '@posthog/ai'
 import { Elysia } from 'elysia'
 import { APIConnectionError, APIConnectionTimeoutError } from 'openai'
-import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions'
+import type { ChatCompletionChunk, ChatCompletionMessageParam } from 'openai/resources/chat/completions'
+import type { Stream } from 'openai/streaming'
 import { getInferenceClient, type InferenceProvider } from './client'
 
 const EHBP_ENCLAVE_HEADER = 'x-tinfoil-enclave-url'
@@ -98,6 +100,20 @@ const logTinfoilUsage = (
 }
 
 /**
+ * Validate CORS origin against allowed origins.
+ */
+const isOriginAllowed = (origin: string): boolean => {
+  const settings = getSettings()
+  const allowedOrigins = getCorsOrigins(settings)
+
+  if (allowedOrigins instanceof RegExp) {
+    return allowedOrigins.test(origin)
+  }
+
+  return allowedOrigins.includes(origin)
+}
+
+/**
  * Proxy EHBP-encrypted request to Tinfoil enclave using Node's https module.
  * Required to read Ehbp-Response-Nonce from headers (Fetch API doesn't support HTTP/2 properly).
  */
@@ -108,13 +124,17 @@ const proxyEhbpRequest = async (ctx: { request: Request }, enclaveBaseUrl: strin
     throw new Error('TINFOIL_API_KEY not configured')
   }
 
-  const upstreamHostname = (() => {
+  const parsedEnclaveUrl = (() => {
     try {
-      return new URL(enclaveBaseUrl).hostname.toLowerCase()
+      return new URL(enclaveBaseUrl)
     } catch {
       throw new Error('Invalid X-Tinfoil-Enclave-Url')
     }
   })()
+  if (parsedEnclaveUrl.protocol !== 'https:') {
+    throw new Error('X-Tinfoil-Enclave-Url must use https')
+  }
+  const upstreamHostname = parsedEnclaveUrl.hostname.toLowerCase()
   const allowed = getAllowedEnclaveHostnames(settings)
   if (!allowed.has(upstreamHostname)) {
     throw new Error(`Enclave hostname "${upstreamHostname}" is not allowed`)
@@ -157,8 +177,9 @@ const proxyEhbpRequest = async (ctx: { request: Request }, enclaveBaseUrl: strin
         responseHeaders.set('Content-Type', contentType)
       }
 
+      // Only set CORS headers when origin is in the configured allowlist (same as Elysia CORS).
       const origin = ctx.request.headers.get('origin')
-      if (origin) {
+      if (origin && isOriginAllowed(origin)) {
         responseHeaders.set('Access-Control-Allow-Origin', origin)
         responseHeaders.set('Access-Control-Allow-Credentials', 'true')
         responseHeaders.set('Access-Control-Expose-Headers', 'Ehbp-Response-Nonce')
@@ -167,13 +188,12 @@ const proxyEhbpRequest = async (ctx: { request: Request }, enclaveBaseUrl: strin
       const { readable, writable } = new TransformStream()
       const writer = writable.getWriter()
 
-      res.on('data', async (chunk: Buffer) => {
-        try {
-          await writer.write(new Uint8Array(chunk))
-        } catch (error) {
+      // Use synchronous handler to avoid race conditions with concurrent writes
+      res.on('data', (chunk: Buffer) => {
+        writer.write(new Uint8Array(chunk)).catch((error) => {
           console.error('[EHBP] Error writing chunk:', error)
           req.destroy()
-        }
+        })
       })
 
       res.on('end', async () => {
@@ -212,6 +232,14 @@ const proxyEhbpRequest = async (ctx: { request: Request }, enclaveBaseUrl: strin
       reject(new Error(`Failed to proxy request to Tinfoil: ${error.message}`))
     })
 
+    // Add timeout to prevent indefinite hanging
+    const PROXY_TIMEOUT_MS = 30_000 // 30 seconds
+    req.setTimeout(PROXY_TIMEOUT_MS, () => {
+      console.error('[EHBP] Request timeout after', PROXY_TIMEOUT_MS, 'ms')
+      req.destroy()
+      reject(new Error('Tinfoil proxy request timeout'))
+    })
+
     req.write(Buffer.from(body))
     req.end()
   })
@@ -232,7 +260,7 @@ export const createInferenceRoutes = () => {
       const hasEhbpKey = headerReq.headers.get(EHBP_KEY_HEADER)
       const isEhbpRequest =
         typeof enclaveUrl === 'string' &&
-        enclaveUrl.startsWith('http') &&
+        enclaveUrl.startsWith('https://') &&
         typeof hasEhbpKey === 'string' &&
         hasEhbpKey.length > 0
       if (isEhbpRequest) {
@@ -274,7 +302,7 @@ export const createInferenceRoutes = () => {
           }),
         })
 
-        const stream = createSSEStreamFromCompletion(completion as any, body.model)
+        const stream = createSSEStreamFromCompletion(completion as Stream<ChatCompletionChunk>, body.model)
 
         return new Response(stream, {
           headers: {

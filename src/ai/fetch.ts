@@ -70,11 +70,14 @@ export const createModel = async (modelConfig: Model) => {
         })
 
         // Add timeout to prevent indefinite hang if attestation service is unavailable
-        const ATTESTATION_TIMEOUT_MS = 10_000 // 10 seconds
+        const attestationTimeoutMs = 10_000 // 10 seconds
         const readyPromise = secureClient.ready()
+        // Silence unhandled rejection when timeout wins the race
+        readyPromise.catch(() => {})
+
         let timeoutId: ReturnType<typeof setTimeout> | undefined
         const timeoutPromise = new Promise<never>((_, reject) => {
-          timeoutId = setTimeout(() => reject(new Error('Attestation bundle fetch timeout')), ATTESTATION_TIMEOUT_MS)
+          timeoutId = setTimeout(() => reject(new Error('Attestation bundle fetch timeout')), attestationTimeoutMs)
         })
         try {
           await Promise.race([readyPromise, timeoutPromise])
@@ -86,7 +89,7 @@ export const createModel = async (modelConfig: Model) => {
         // The body is encrypted, so backend needs this unencrypted header to validate the model
         const wrappedFetch = (url: RequestInfo | URL, init?: RequestInit) => {
           const headers = new Headers(init?.headers)
-          headers.set('X-Requested-Model', 'gpt-oss-120b')
+          headers.set('X-Requested-Model', modelConfig.model)
           return secureClient.fetch(url, { ...init, headers })
         }
         // Bun's fetch type expects a preconnect method.
@@ -98,7 +101,7 @@ export const createModel = async (modelConfig: Model) => {
           apiKey: 'browser-uses-proxy',
           fetch: wrappedFetch,
         })
-        return tinfoil('gpt-oss-120b')
+        return tinfoil(modelConfig.model)
       }
 
       // GPT OSS (vendor: 'openai') uses createOpenAI with .chat() to force Chat Completions API
