@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import { createMainRoutes } from '@/api/routes'
 import { createBetterAuthPlugin } from '@/auth/elysia-plugin'
 import { createGoogleAuthRoutes } from '@/auth/google'
@@ -219,7 +220,6 @@ const startServer = async () => {
 
 // Start the server if this file is run directly
 if (import.meta.main) {
-  await import('dotenv/config')
   await startServer()
 }
 

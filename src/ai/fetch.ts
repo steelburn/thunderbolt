@@ -66,7 +66,7 @@ export const createModel = async (modelConfig: Model) => {
 
         const secureClient = new SecureClient({
           baseURL: cloudUrl,
-          attestationBundleURL: `${cloudUrl}/attestation`,
+          attestationBundleURL: cloudUrl,
         })
 
         // Add timeout to prevent indefinite hang if attestation service is unavailable

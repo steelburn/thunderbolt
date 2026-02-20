@@ -174,11 +174,13 @@ const getAnthropicClient = (fetchFn?: typeof fetch): OpenAI | PostHogOpenAI => {
  * Get the appropriate inference client based on provider
  * Clients are lazily initialized and reused across requests
  *
- * Note: Tinfoil uses EHBP passthrough (handled directly in routes.ts)
+ * Tinfoil (gpt-oss-120b with EHBP) is not handled here: the frontend sends encrypted
+ * requests to the backend, and inference/routes.ts proxies them to the enclave via
+ * EHBP passthrough when X-Tinfoil-Enclave-Url is present.
  */
 export const getInferenceClient = (provider: InferenceProvider, fetchFn?: typeof fetch): InferenceClient => {
   if (provider === 'tinfoil') {
-    throw new Error('Tinfoil requests use EHBP passthrough (handled in routes.ts)')
+    throw new Error('Tinfoil requests use EHBP passthrough in inference/routes.ts')
   }
 
   const clientMap: Record<Exclude<InferenceProvider, 'tinfoil'>, () => OpenAI | PostHogOpenAI> = {

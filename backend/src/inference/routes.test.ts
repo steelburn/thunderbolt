@@ -278,6 +278,23 @@ describe('Inference Routes', () => {
       expect(mockCreateCompletion).not.toHaveBeenCalled()
     })
 
+    it('should take EHBP path when X-Tinfoil-Enclave-Url and Ehbp-Encapsulated-Key are present', async () => {
+      const response = await app.handle(
+        new Request('http://localhost/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/octet-stream',
+            'X-Tinfoil-Enclave-Url': 'https://inference.tinfoil.sh',
+            'Ehbp-Encapsulated-Key': 'a'.repeat(64),
+          },
+          body: new Uint8Array([1, 2, 3]),
+        }),
+      )
+
+      expect(mockCreateCompletion).not.toHaveBeenCalled()
+      expect(response.status).toBeGreaterThanOrEqual(500)
+    })
+
     it('should reject unsupported models', async () => {
       const unsupportedModelRequest = {
         ...validRequestBody,

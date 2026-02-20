@@ -55,7 +55,7 @@ const settingsSchema = z.object({
   corsAllowHeaders: z
     .string()
     .default(
-      'Content-Type,Authorization,Accept,Accept-Encoding,Accept-Language,Cache-Control,User-Agent,X-Requested-With,X-Client-Platform,Ehbp-Encapsulated-Key,X-Tinfoil-Enclave-Url',
+      'Content-Type,Authorization,Accept,Accept-Encoding,Accept-Language,Cache-Control,User-Agent,X-Requested-With,X-Client-Platform,Ehbp-Encapsulated-Key,X-Tinfoil-Enclave-Url,X-Requested-Model',
     ),
   corsExposeHeaders: z.string().default('mcp-session-id,Ehbp-Response-Nonce'),
 })
@@ -93,7 +93,7 @@ const parseSettings = (): Settings => {
     corsAllowMethods: process.env.CORS_ALLOW_METHODS || 'GET,POST,PUT,DELETE,PATCH,OPTIONS',
     corsAllowHeaders:
       process.env.CORS_ALLOW_HEADERS ||
-      'Content-Type,Authorization,Accept,Accept-Encoding,Accept-Language,Cache-Control,User-Agent,X-Requested-With,X-Client-Platform,Ehbp-Encapsulated-Key,X-Tinfoil-Enclave-Url',
+      'Content-Type,Authorization,Accept,Accept-Encoding,Accept-Language,Cache-Control,User-Agent,X-Requested-With,X-Client-Platform,Ehbp-Encapsulated-Key,X-Tinfoil-Enclave-Url,X-Requested-Model',
     corsExposeHeaders: process.env.CORS_EXPOSE_HEADERS || 'mcp-session-id,Ehbp-Response-Nonce',
   }
 
@@ -142,23 +142,4 @@ export const getCorsMethodsList = (settings: Settings): string[] => {
     .split(',')
     .map((method) => method.trim())
     .filter((method) => method.length > 0)
-}
-
-/**
- * Validate an origin against CORS settings
- * Returns the origin if valid, null otherwise
- * Matches the validation logic used by @elysiajs/cors middleware
- */
-export const validateCorsOrigin = (origin: string | null, settings: Settings): string | null => {
-  if (!origin) {
-    return null
-  }
-
-  if (settings.corsOriginRegex) {
-    const regex = new RegExp(settings.corsOriginRegex)
-    return regex.test(origin) ? origin : null
-  }
-
-  const allowedOrigins = getCorsOriginsList(settings)
-  return allowedOrigins.includes(origin) ? origin : null
 }

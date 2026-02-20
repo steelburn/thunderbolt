@@ -1,11 +1,13 @@
 import { safeErrorHandler } from '@/middleware/error-handling'
-import { isPostHogConfigured } from '@/posthog/client'
 import { createSSEStreamFromCompletion } from '@/utils/streaming'
 import type { OpenAI as PostHogOpenAI } from '@posthog/ai'
 import { Elysia } from 'elysia'
 import { APIConnectionError, APIConnectionTimeoutError } from 'openai'
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions'
 import { getInferenceClient, type InferenceProvider } from './client'
+
+const EHBP_ENCLAVE_HEADER = 'x-tinfoil-enclave-url'
+const EHBP_KEY_HEADER = 'ehbp-encapsulated-key'
 
 type Message = { role: string; content: unknown }
 
@@ -40,6 +42,181 @@ export const supportedModels: Record<string, ModelConfig> = {
 }
 
 /**
+ * Allowed enclave hostnames (comma-separated). Used to validate X-Tinfoil-Enclave-Url to prevent SSRF.
+ */
+const getAllowedEnclaveHostnames = (settings: { tinfoilEnclaveAllowedHostnames: string }): Set<string> => {
+  const raw = settings.tinfoilEnclaveAllowedHostnames
+  return new Set(
+    raw
+      .split(',')
+      .map((h) => h.trim().toLowerCase())
+      .filter(Boolean),
+  )
+}
+
+/**
+ * Parse usage metrics from Tinfoil HTTP trailer.
+ * Format: "prompt=67,completion=42,total=109"
+ */
+const parseUsageMetrics = (metricsString: string): { prompt: number; completion: number; total: number } => {
+  const pairs = metricsString.split(',')
+  const metrics: Record<string, number> = {}
+
+  for (const pair of pairs) {
+    const [key, value] = pair.split('=')
+    if (!key || !value) continue
+    const num = Number.parseInt(value.trim(), 10)
+    if (!Number.isNaN(num) && num >= 0) {
+      metrics[key.trim()] = num
+    }
+  }
+
+  return {
+    prompt: metrics.prompt ?? 0,
+    completion: metrics.completion ?? 0,
+    total: metrics.total ?? 0,
+  }
+}
+
+/**
+ * Log Tinfoil usage metrics to console.
+ */
+const logTinfoilUsage = (
+  metrics: { prompt: number; completion: number; total: number },
+  duration: number,
+  model: string,
+): void => {
+  console.info('[Usage]', {
+    model,
+    provider: 'tinfoil',
+    promptTokens: metrics.prompt,
+    completionTokens: metrics.completion,
+    totalTokens: metrics.total,
+    durationMs: duration,
+  })
+}
+
+/**
+ * Proxy EHBP-encrypted request to Tinfoil enclave using Node's https module.
+ * Required to read Ehbp-Response-Nonce from headers (Fetch API doesn't support HTTP/2 properly).
+ */
+const proxyEhbpRequest = async (ctx: { request: Request }, enclaveBaseUrl: string): Promise<Response> => {
+  const { getSettings } = await import('@/config/settings')
+  const settings = getSettings()
+  if (!settings.tinfoilApiKey) {
+    throw new Error('TINFOIL_API_KEY not configured')
+  }
+
+  const upstreamHostname = (() => {
+    try {
+      return new URL(enclaveBaseUrl).hostname.toLowerCase()
+    } catch {
+      throw new Error('Invalid X-Tinfoil-Enclave-Url')
+    }
+  })()
+  const allowed = getAllowedEnclaveHostnames(settings)
+  if (!allowed.has(upstreamHostname)) {
+    throw new Error(`Enclave hostname "${upstreamHostname}" is not allowed`)
+  }
+
+  const pathname = new URL(ctx.request.url).pathname
+  const upstreamUrl = enclaveBaseUrl.replace(/\/$/, '') + pathname
+  const body = await ctx.request.arrayBuffer()
+  const ehbpKey = ctx.request.headers.get(EHBP_KEY_HEADER)
+
+  const https = await import('node:https')
+  const parsedUrl = new URL(upstreamUrl)
+  const requestStartTime = Date.now()
+
+  return new Promise<Response>((resolve, reject) => {
+    const options = {
+      hostname: parsedUrl.hostname,
+      port: parsedUrl.port || 443,
+      path: parsedUrl.pathname + parsedUrl.search,
+      method: 'POST',
+      headers: {
+        'Content-Type': ctx.request.headers.get('content-type') ?? 'application/json',
+        Accept: ctx.request.headers.get('accept') ?? 'text/event-stream',
+        'Content-Length': Buffer.byteLength(new Uint8Array(body)),
+        Authorization: `Bearer ${settings.tinfoilApiKey}`,
+        ...(ehbpKey && { 'Ehbp-Encapsulated-Key': ehbpKey }),
+      },
+    }
+
+    const req = https.request(options, (res) => {
+      const responseHeaders = new Headers()
+      const nonce = res.headers['ehbp-response-nonce'] as string | undefined
+
+      if (nonce) {
+        responseHeaders.set('Ehbp-Response-Nonce', nonce)
+      }
+
+      const contentType = res.headers['content-type']
+      if (contentType) {
+        responseHeaders.set('Content-Type', contentType)
+      }
+
+      const origin = ctx.request.headers.get('origin')
+      if (origin) {
+        responseHeaders.set('Access-Control-Allow-Origin', origin)
+        responseHeaders.set('Access-Control-Allow-Credentials', 'true')
+        responseHeaders.set('Access-Control-Expose-Headers', 'Ehbp-Response-Nonce')
+      }
+
+      const { readable, writable } = new TransformStream()
+      const writer = writable.getWriter()
+
+      res.on('data', async (chunk: Buffer) => {
+        try {
+          await writer.write(new Uint8Array(chunk))
+        } catch (error) {
+          console.error('[EHBP] Error writing chunk:', error)
+          req.destroy()
+        }
+      })
+
+      res.on('end', async () => {
+        try {
+          // Extract usage metrics from HTTP trailers
+          const usageMetrics = res.trailers?.['x-tinfoil-usage-metrics']
+          if (usageMetrics && typeof usageMetrics === 'string') {
+            const metrics = parseUsageMetrics(usageMetrics)
+            const duration = Date.now() - requestStartTime
+            logTinfoilUsage(metrics, duration, 'gpt-oss-120b')
+          }
+
+          await writer.close()
+        } catch (error) {
+          console.error('[EHBP] Error in end handler:', error)
+          writer.abort(error as Error)
+        }
+      })
+
+      res.on('error', (error: Error) => {
+        console.error('[EHBP] Response stream error:', error)
+        writer.abort(error)
+        req.destroy()
+      })
+
+      resolve(
+        new Response(readable, {
+          status: res.statusCode || 200,
+          headers: responseHeaders,
+        }),
+      )
+    })
+
+    req.on('error', (error: Error) => {
+      console.error('[EHBP] Request error:', error)
+      reject(new Error(`Failed to proxy request to Tinfoil: ${error.message}`))
+    })
+
+    req.write(Buffer.from(body))
+    req.end()
+  })
+}
+
+/**
  * Inference API routes
  */
 export const createInferenceRoutes = () => {
@@ -48,7 +225,20 @@ export const createInferenceRoutes = () => {
   })
     .onError(safeErrorHandler)
     .post('/completions', async (ctx) => {
-      const body = await ctx.request.json()
+      const req = ctx.request
+      const headerReq = req.clone()
+      const enclaveUrl = headerReq.headers.get(EHBP_ENCLAVE_HEADER)
+      const hasEhbpKey = headerReq.headers.get(EHBP_KEY_HEADER)
+      const isEhbpRequest =
+        typeof enclaveUrl === 'string' &&
+        enclaveUrl.startsWith('http') &&
+        typeof hasEhbpKey === 'string' &&
+        hasEhbpKey.length > 0
+      if (isEhbpRequest) {
+        return proxyEhbpRequest({ request: req }, enclaveUrl as string)
+      }
+
+      const body = await req.json()
 
       if (!body.stream) {
         throw new Error('Non-streaming requests are not supported')
