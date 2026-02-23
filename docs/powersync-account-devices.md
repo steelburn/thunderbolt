@@ -164,7 +164,92 @@ After revoke, the Settings > Devices list is updated by invalidating `['devices'
 
 ---
 
-## 8. Summary
+## 8. PowerSync extension and middleware
+
+We extend PowerSync to transform sync data before it reaches the local database. This enables encryption/decryption, format conversion, and other transformations without forking the PowerSync SDK.
+
+### Architecture
+
+We use two extension points:
+
+1. **ThunderboltPowerSyncDatabase** – Overrides `generateBucketStorageAdapter()` to return our `TransformableBucketStorage` instead of the default `SqliteBucketStorage`.
+2. **TransformableBucketStorage** – Extends `SqliteBucketStorage` and overrides `control()` to intercept `PROCESS_TEXT_LINE` sync data, run the middleware pipeline, then pass the transformed payload to the WASM engine.
+
+PowerSync's Rust client sends sync data via `adapter.control(PROCESS_TEXT_LINE, payload)`. Our `control()` override is the only interception point for incoming sync data.
+
+See [powersync-middleware-architecture.md](powersync-middleware-architecture.md) for a detailed flowchart and data flow.
+
+### Data flow
+
+```mermaid
+flowchart LR
+    subgraph init [Initialization - database.ts]
+        Options[ThunderboltPowerSyncOptions<br>transformers: encryptionMiddleware<br>flags: enableMultiTabs false, useWebWorker false]
+        DbCtor[ThunderboltPowerSyncDatabase.ts<br>new ThunderboltPowerSyncDatabase]
+        GenAdapter[generateBucketStorageAdapter override]
+        CreateStorage[new TransformableBucketStorage<br>addTransformer for each in options.transformers]
+        Options --> DbCtor
+        DbCtor --> GenAdapter
+        GenAdapter --> CreateStorage
+    end
+
+    subgraph download [Download Flow]
+        Server[PowerSync Server]
+        AdapterControl[adapter.control<br>PROCESS_TEXT_LINE]
+        ControlOverride[TransformableBucketStorage.ts<br>control override]
+        ParsePayload[parse payload<br>SyncDataBucket.fromRow]
+        RunTransformers[runTransformers<br>for each in this.transformers]
+        EncryptTransform[EncryptionMiddleware.ts<br>transform batch]
+        SuperControl[super.control<br>transformedPayload]
+        WASM[WASM Engine]
+        Server --> AdapterControl
+        AdapterControl --> ControlOverride
+        ControlOverride --> ParsePayload
+        ParsePayload --> RunTransformers
+        RunTransformers --> EncryptTransform
+        EncryptTransform -->|"decrypt tasks.item<br>object_type === tasks"| SuperControl
+        SuperControl --> WASM
+    end
+
+    subgraph upload [Upload Flow]
+        CrudQueue[(ps_crud)]
+        GetTx[connector.ts<br>getNextCrudTransaction]
+        MapOps[map transaction.crud<br>to op, type, id, data]
+        EncryptStep["if op.table === tasks<br>encrypt op.opData.item"]
+        FetchPut[fetch PUT<br>backendUrl/powersync/upload]
+        Complete[transaction.complete]
+        CrudQueue --> GetTx
+        GetTx --> MapOps
+        MapOps --> EncryptStep
+        EncryptStep --> FetchPut
+        FetchPut --> Complete
+    end
+```
+
+### Key files
+
+| File | Purpose |
+|------|---------|
+| [src/db/powersync/ThunderboltPowerSyncDatabase.ts](../src/db/powersync/ThunderboltPowerSyncDatabase.ts) | Extends PowerSync; creates TransformableBucketStorage with configured transformers |
+| [src/db/powersync/TransformableBucketStorage.ts](../src/db/powersync/TransformableBucketStorage.ts) | Intercepts `control()`; runs middleware on sync data before WASM |
+| [src/db/powersync/middleware/EncryptionMiddleware.ts](../src/db/powersync/middleware/EncryptionMiddleware.ts) | Decrypts `tasks.item` on download (evolving to full encryption) |
+| [src/db/powersync/connector.ts](../src/db/powersync/connector.ts) | Encrypts `tasks.item` on upload |
+
+### Constraints
+
+- **enableMultiTabs** and **useWebWorker** must be `false`. When enabled, PowerSync uses a SharedWorker that creates its own storage and bypasses our adapter.
+- Middleware runs in the main thread. For large sync batches, consider performance implications.
+
+### Encryption middleware (current)
+
+- **Download**: For `tasks` table, `item` column only – decrypt before writing to SQLite. (Currently uses base64 as a placeholder.)
+- **Upload**: For `tasks` table PUT/PATCH – encrypt `item` before sending to the backend. (Currently uses base64 as a placeholder.)
+
+This will evolve into a full encryption layer for all tables/columns.
+
+---
+
+## 9. Summary
 
 | Action         | Where       | Backend / sync behavior                        | Other device behavior                                                             |
 | -------------- | ----------- | ---------------------------------------------- | --------------------------------------------------------------------------------- |
