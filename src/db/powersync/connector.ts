@@ -1,5 +1,6 @@
 import { getDeviceId, getAuthToken } from '@/lib/auth-token'
 import { getDeviceDisplayName } from '@/lib/platform'
+import { encodeToBase64 } from '@/lib/base64'
 import type { AbstractPowerSyncDatabase, PowerSyncBackendConnector, PowerSyncCredentials } from '@powersync/web'
 
 /** Dispatched when backend returns 410 (account deleted) or 403 + DEVICE_DISCONNECTED. App should reset and reload. */
@@ -97,12 +98,36 @@ export class ThunderboltConnector implements PowerSyncBackendConnector {
 
     try {
       // Convert CRUD operations to our API format
-      const operations = transaction.crud.map((op) => ({
-        op: op.op.toUpperCase() as 'PUT' | 'PATCH' | 'DELETE',
-        type: op.table,
-        id: op.id,
-        data: op.opData,
-      }))
+      const operations = transaction.crud.map((op) => {
+        /**
+         * **************************************************************
+         * Encode base64 for tasks.item when the value is valid base64.
+         * Temporary solution for testing purposes.
+         *
+         * TODO: Remove this once we have a proper encryption middleware.
+         */
+        let data = op.opData
+        if (
+          op.table === 'tasks' &&
+          data != null &&
+          typeof data.item === 'string' &&
+          (op.op === 'PUT' || op.op === 'PATCH')
+        ) {
+          data = { ...data, item: encodeToBase64(data.item) }
+        }
+        /**
+         * Temporary solution for testing purposes.
+         * TODO: Remove this once we have a proper encryption middleware.
+         * **************************************************************
+         */
+
+        return {
+          op: op.op.toUpperCase() as 'PUT' | 'PATCH' | 'DELETE',
+          type: op.table,
+          id: op.id,
+          data,
+        }
+      })
 
       console.info(`Uploading ${operations.length} operations to backend`)
 

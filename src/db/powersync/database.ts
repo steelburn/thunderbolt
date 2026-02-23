@@ -10,6 +10,7 @@ import { AppSchema, drizzleSchema } from './schema'
 import { ThunderboltConnector } from './connector'
 import { ThunderboltPowerSyncDatabase } from './ThunderboltPowerSyncDatabase'
 import type { ThunderboltPowerSyncOptions } from './ThunderboltPowerSyncDatabase'
+import { encryptionMiddleware } from './middleware/EncryptionMiddleware'
 
 /** LocalStorage key for sync enabled flag */
 const SYNC_ENABLED_KEY = 'powersync_sync_enabled'
@@ -108,7 +109,7 @@ export class PowerSyncDatabaseImpl implements DatabaseInterface {
     const options: ThunderboltPowerSyncOptions = {
       database: { dbFilename },
       schema: AppSchema as unknown as WebPowerSyncDatabaseOptions['schema'],
-      transformers: [],
+      transformers: [encryptionMiddleware],
       // Required for both approaches: SharedWorker creates its own storage and bypasses our adapter.
       // Ref: https://docs.powersync.com/client-sdks/reference/javascript-web#available-flags
       flags: { enableMultiTabs: false, useWebWorker: false },
