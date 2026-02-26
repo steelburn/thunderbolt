@@ -97,33 +97,37 @@ export const PromptInput = forwardRef<HTMLFormElement, PromptInputProps>(
         </Button>
       ))
 
-    // Mobile layout: single row with mode selector, textarea, and submit button inline
+    // Mobile layout: textarea on top, controls below (Claude-style)
     const mobileContent = (
-      <div className="flex gap-2 items-center w-full">
-        {footerStartElements && <div className="flex items-center gap-2 flex-shrink-0">{footerStartElements}</div>}
-
+      <>
         <AutosizeTextarea
           value={value}
           onChange={handleTextareaChange}
           onKeyDown={submitOnEnter ? handleKeyDown : undefined}
           placeholder={placeholder}
-          minHeight={32}
+          minHeight={28}
           maxHeight={240}
           autoFocus={autoFocus}
-          className="flex-1 border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 resize-none px-1 py-4 text-base leading-5"
+          className="w-full border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 resize-none px-1 pt-1 pb-0 text-base leading-5"
         />
 
-        {showModelSelect && (
-          <ModelSelect
-            chatThread={chatThread}
-            models={models}
-            selectedModelId={selectedModelId}
-            onModelChange={onModelChange}
-          />
-        )}
+        <div className="flex justify-between items-end w-full">
+          <div className="flex items-center gap-2">{footerStartElements}</div>
 
-        {submitButton}
-      </div>
+          <div className="flex gap-2 items-center">
+            {showModelSelect && (
+              <ModelSelect
+                chatThread={chatThread}
+                models={models}
+                selectedModelId={selectedModelId}
+                onModelChange={onModelChange}
+              />
+            )}
+
+            {submitButton}
+          </div>
+        </div>
+      </>
     )
 
     // Desktop layout: textarea on top, footer with mode selector and buttons below

@@ -15,7 +15,6 @@ import { createElement } from 'react'
 import { BrowserRouter } from 'react-router'
 import { ChatPromptInput, type ChatPromptInputRef } from './chat-prompt-input'
 
-// Mock useContextTracking hook
 const createMockUseContextTracking =
   (
     isOverflowing: boolean = false,
@@ -32,7 +31,6 @@ const createMockUseContextTracking =
     estimateTokensForInput: (_input: string) => 0,
   })
 
-// Mock useIsMobile hook
 const createMockUseIsMobile =
   (isMobile: boolean = false, isReady: boolean = true) =>
   () => ({
@@ -40,12 +38,28 @@ const createMockUseIsMobile =
     isReady,
   })
 
-/**
- * Wrapper that includes Router context for useNavigate
- */
 const TestWrapper = ({ children }: { children: React.ReactNode }) => {
   const queryWrapper = createQueryTestWrapper()
   return createElement(BrowserRouter, null, createElement(queryWrapper, null, children))
+}
+
+/** Hydrate the chat store with sensible defaults for testing */
+const setupStore = () => {
+  const mockModel = createMockModel()
+  const mockChatInstance = createMockChatInstance([], 'ready')
+  const mockUseChat = createMockUseChat(mockChatInstance)
+
+  hydrateStore({
+    chatInstance: mockChatInstance,
+    chatThread: createMockChatThread(),
+    id: 'thread-1',
+    mcpClients: [],
+    models: [mockModel],
+    selectedModel: mockModel,
+    triggerData: null,
+  })
+
+  return { mockModel, mockChatInstance, mockUseChat }
 }
 
 describe('ChatPromptInput', () => {
@@ -58,133 +72,119 @@ describe('ChatPromptInput', () => {
   })
 
   beforeEach(() => {
-    // Reset store state before each test
     resetStore()
   })
 
   afterEach(async () => {
-    // Cleanup rendered components before resetting store to prevent errors during unmount
     cleanup()
-    // Reset store state after each test
     resetStore()
     await resetTestDatabase()
   })
 
-  describe('basic rendering', () => {
-    it('should render the prompt input component', () => {
-      const mockChatInstance = createMockChatInstance()
-      const mockUseChat = createMockUseChat(mockChatInstance)
-      const mockModel = createMockModel()
+  describe('rendering', () => {
+    it('should render textarea with placeholder', () => {
+      const { mockUseChat } = setupStore()
 
-      hydrateStore({
-        chatInstance: mockChatInstance,
-        chatThread: createMockChatThread(),
-        id: 'thread-1',
-        mcpClients: [],
-        models: [mockModel],
-        selectedModel: mockModel,
-        triggerData: null,
-      })
-
-      const mockUseIsMobile = createMockUseIsMobile()
-
-      const { container } = render(<ChatPromptInput useChat={mockUseChat} useIsMobile={mockUseIsMobile} />, {
+      render(<ChatPromptInput useChat={mockUseChat} useIsMobile={createMockUseIsMobile()} />, {
         wrapper: TestWrapper,
       })
 
-      expect(container).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('Ask me anything...')).toBeInTheDocument()
+    })
+
+    it('should return null when mobile detection is not ready', () => {
+      const { mockUseChat } = setupStore()
+
+      const { container } = render(
+        <ChatPromptInput useChat={mockUseChat} useIsMobile={createMockUseIsMobile(false, false)} />,
+        { wrapper: TestWrapper },
+      )
+
+      expect(container.querySelector('form')).toBeNull()
+    })
+
+    it('should render once mobile detection is ready', () => {
+      const { mockUseChat } = setupStore()
+
+      const { container } = render(
+        <ChatPromptInput useChat={mockUseChat} useIsMobile={createMockUseIsMobile(false, true)} />,
+        { wrapper: TestWrapper },
+      )
+
+      expect(container.querySelector('form')).not.toBeNull()
     })
   })
 
-  describe('form submission', () => {
-    it('should render textarea for input', () => {
-      const mockChatInstance = createMockChatInstance([], 'ready')
-      const mockUseChat = createMockUseChat(mockChatInstance)
-      const mockModel = createMockModel()
+  describe('mobile layout', () => {
+    it('should apply mobile class names', () => {
+      const { mockUseChat } = setupStore()
 
-      hydrateStore({
-        chatInstance: mockChatInstance,
-        chatThread: createMockChatThread(),
-        id: 'thread-1',
-        mcpClients: [],
-        models: [mockModel],
-        selectedModel: mockModel,
-        triggerData: null,
-      })
+      const { container } = render(
+        <ChatPromptInput useChat={mockUseChat} useIsMobile={createMockUseIsMobile(true)} />,
+        { wrapper: TestWrapper },
+      )
 
-      const mockUseIsMobile = createMockUseIsMobile()
-
-      render(<ChatPromptInput useChat={mockUseChat} useIsMobile={mockUseIsMobile} />, { wrapper: TestWrapper })
-
-      // Verify textarea is rendered
-      const textarea = screen.getByPlaceholderText('Ask me anything...')
-      expect(textarea).toBeInTheDocument()
+      const form = container.querySelector('form')
+      expect(form?.className).toContain('gap-0')
+      expect(form?.className).toContain('p-4')
     })
-  })
 
-  describe('context overflow', () => {
-    it('should use context tracking hook', () => {
-      const mockChatInstance = createMockChatInstance([], 'ready')
-      const mockUseChat = createMockUseChat(mockChatInstance)
-      const mockModel = createMockModel()
-      const mockUseContextTracking = createMockUseContextTracking(false, true, 1000, 2000)
+    it('should apply desktop class names when not mobile', () => {
+      const { mockUseChat } = setupStore()
 
-      hydrateStore({
-        chatInstance: mockChatInstance,
-        chatThread: createMockChatThread(),
-        id: 'thread-1',
-        mcpClients: [],
-        models: [mockModel],
-        selectedModel: mockModel,
-        triggerData: null,
-      })
+      const { container } = render(
+        <ChatPromptInput useChat={mockUseChat} useIsMobile={createMockUseIsMobile(false)} />,
+        { wrapper: TestWrapper },
+      )
 
-      const mockUseIsMobile = createMockUseIsMobile()
+      const form = container.querySelector('form')
+      expect(form?.className).toContain('gap-2')
+      expect(form?.className).toContain('p-3')
+    })
+
+    it('should hide context usage indicator on mobile', () => {
+      const { mockUseChat } = setupStore()
 
       render(
         <ChatPromptInput
           useChat={mockUseChat}
-          useContextTracking={mockUseContextTracking}
-          useIsMobile={mockUseIsMobile}
+          useIsMobile={createMockUseIsMobile(true)}
+          useContextTracking={createMockUseContextTracking(false, true, 1000, 2000)}
         />,
         { wrapper: TestWrapper },
       )
 
-      // Component should render without errors
-      expect(screen.getByPlaceholderText('Ask me anything...')).toBeInTheDocument()
+      expect(screen.queryByText('50%')).toBeNull()
+    })
+
+    it('should show context usage indicator on desktop', () => {
+      const { mockUseChat } = setupStore()
+
+      render(
+        <ChatPromptInput
+          useChat={mockUseChat}
+          useIsMobile={createMockUseIsMobile(false)}
+          useContextTracking={createMockUseContextTracking(false, true, 1000, 2000)}
+        />,
+        { wrapper: TestWrapper },
+      )
+
+      expect(screen.getByText('50%')).toBeInTheDocument()
     })
   })
 
   describe('ref methods', () => {
     it('should expose focus method that focuses textarea', () => {
-      const mockChatInstance = createMockChatInstance()
-      const mockUseChat = createMockUseChat(mockChatInstance)
-      const mockModel = createMockModel()
-
-      hydrateStore({
-        chatInstance: mockChatInstance,
-        chatThread: createMockChatThread(),
-        id: 'thread-1',
-        mcpClients: [],
-        models: [mockModel],
-        selectedModel: mockModel,
-        triggerData: null,
-      })
-
-      const mockUseIsMobile = createMockUseIsMobile()
+      const { mockUseChat } = setupStore()
       const ref = { current: null } as unknown as React.RefObject<ChatPromptInputRef>
 
-      render(<ChatPromptInput ref={ref} useChat={mockUseChat} useIsMobile={mockUseIsMobile} />, {
+      render(<ChatPromptInput ref={ref} useChat={mockUseChat} useIsMobile={createMockUseIsMobile()} />, {
         wrapper: TestWrapper,
       })
-
-      expect(ref.current).not.toBeNull()
-      expect(typeof ref.current?.focus).toBe('function')
 
       const textarea = screen.getByPlaceholderText('Ask me anything...') as HTMLTextAreaElement
       const focusSpy = mock(() => {})
       const setSelectionRangeSpy = mock(() => {})
-
       textarea.focus = focusSpy
       textarea.setSelectionRange = setSelectionRangeSpy
 
@@ -196,30 +196,13 @@ describe('ChatPromptInput', () => {
       expect(setSelectionRangeSpy).toHaveBeenCalled()
     })
 
-    it('should expose setInput method that updates input value', () => {
-      const mockChatInstance = createMockChatInstance()
-      const mockUseChat = createMockUseChat(mockChatInstance)
-      const mockModel = createMockModel()
-
-      hydrateStore({
-        chatInstance: mockChatInstance,
-        chatThread: createMockChatThread(),
-        id: 'thread-1',
-        mcpClients: [],
-        models: [mockModel],
-        selectedModel: mockModel,
-        triggerData: null,
-      })
-
-      const mockUseIsMobile = createMockUseIsMobile()
+    it('should expose setInput method that updates textarea value', () => {
+      const { mockUseChat } = setupStore()
       const ref = { current: null } as unknown as React.RefObject<ChatPromptInputRef>
 
-      render(<ChatPromptInput ref={ref} useChat={mockUseChat} useIsMobile={mockUseIsMobile} />, {
+      render(<ChatPromptInput ref={ref} useChat={mockUseChat} useIsMobile={createMockUseIsMobile()} />, {
         wrapper: TestWrapper,
       })
-
-      expect(ref.current).not.toBeNull()
-      expect(typeof ref.current?.setInput).toBe('function')
 
       act(() => {
         ref.current?.setInput('Test input')
@@ -231,82 +214,29 @@ describe('ChatPromptInput', () => {
   })
 
   describe('dependency injection', () => {
-    it('should work with dependency injection for useChat', () => {
-      const mockChatInstance = createMockChatInstance()
-      const mockUseChat = createMockUseChat(mockChatInstance)
-      const mockModel = createMockModel()
+    it('should accept injected useChat', () => {
+      const { mockUseChat } = setupStore()
 
-      hydrateStore({
-        chatInstance: mockChatInstance,
-        chatThread: createMockChatThread(),
-        id: 'thread-1',
-        mcpClients: [],
-        models: [mockModel],
-        selectedModel: mockModel,
-        triggerData: null,
-      })
-
-      const mockUseIsMobile = createMockUseIsMobile()
-
-      const { container } = render(<ChatPromptInput useChat={mockUseChat} useIsMobile={mockUseIsMobile} />, {
+      const { container } = render(<ChatPromptInput useChat={mockUseChat} useIsMobile={createMockUseIsMobile()} />, {
         wrapper: TestWrapper,
       })
 
-      expect(container).toBeInTheDocument()
+      expect(container.querySelector('form')).not.toBeNull()
     })
 
-    it('should work with dependency injection for useContextTracking', () => {
-      const mockChatInstance = createMockChatInstance()
-      const mockUseChat = createMockUseChat(mockChatInstance)
-      const mockModel = createMockModel()
-      const mockUseContextTracking = createMockUseContextTracking(false, true, 1000, 2000)
-
-      hydrateStore({
-        chatInstance: mockChatInstance,
-        chatThread: createMockChatThread(),
-        id: 'thread-1',
-        mcpClients: [],
-        models: [mockModel],
-        selectedModel: mockModel,
-        triggerData: null,
-      })
-
-      const mockUseIsMobile = createMockUseIsMobile()
+    it('should accept injected useContextTracking', () => {
+      const { mockUseChat } = setupStore()
 
       const { container } = render(
         <ChatPromptInput
           useChat={mockUseChat}
-          useContextTracking={mockUseContextTracking}
-          useIsMobile={mockUseIsMobile}
+          useContextTracking={createMockUseContextTracking()}
+          useIsMobile={createMockUseIsMobile()}
         />,
         { wrapper: TestWrapper },
       )
 
-      expect(container).toBeInTheDocument()
-    })
-
-    it('should work with dependency injection for useIsMobile', () => {
-      const mockChatInstance = createMockChatInstance()
-      const mockUseChat = createMockUseChat(mockChatInstance)
-      const mockModel = createMockModel()
-
-      hydrateStore({
-        chatInstance: mockChatInstance,
-        chatThread: createMockChatThread(),
-        id: 'thread-1',
-        mcpClients: [],
-        models: [mockModel],
-        selectedModel: mockModel,
-        triggerData: null,
-      })
-
-      const mockUseIsMobile = createMockUseIsMobile(false, true)
-
-      const { container } = render(<ChatPromptInput useChat={mockUseChat} useIsMobile={mockUseIsMobile} />, {
-        wrapper: TestWrapper,
-      })
-
-      expect(container).toBeInTheDocument()
+      expect(container.querySelector('form')).not.toBeNull()
     })
   })
 })

@@ -116,7 +116,9 @@ export const ChatPromptInput = forwardRef<ChatPromptInputRef, ChatPromptInputPro
 
     const footerStartElements = (
       <div className="flex items-center gap-2">
-        {modes.length > 0 && <ModeSelector modes={modes} selectedMode={selectedMode} onModeChange={handleModeChange} />}
+        {modes.length > 0 && (
+          <ModeSelector modes={modes} selectedMode={selectedMode} onModeChange={handleModeChange} iconOnly={isMobile} />
+        )}
         {isContextKnown && !isMobile && (
           <ContextUsageIndicator usedTokens={usedTokens ?? 0} maxTokens={maxTokens ?? 0} />
         )}
@@ -142,7 +144,7 @@ export const ChatPromptInput = forwardRef<ChatPromptInputRef, ChatPromptInputPro
           onStop={stop}
           autoFocus={!isMobile}
           submitOnEnter={!isStreaming && !isPlatformMobile()}
-          className={`flex flex-col gap-2 bg-background dark:bg-input/30 border dark:border-input rounded-2xl w-full ${isMobile ? 'px-3 py-1' : 'p-3'}`}
+          className={`flex flex-col bg-background dark:bg-input/30 border dark:border-input rounded-2xl w-full ${isMobile ? 'gap-0 p-4' : 'gap-2 p-3'}`}
           footerStartElements={footerStartElements}
           isMobile={isMobile}
         />
