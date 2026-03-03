@@ -72,6 +72,10 @@ check "cmake" \
   "cmake --version | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+'" \
   "install with: brew install cmake"
 
+check "render" \
+  "render --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+'" \
+  "install with: brew install render"
+
 echo ""
 
 # --- Env files ---
