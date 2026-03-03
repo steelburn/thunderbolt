@@ -210,9 +210,10 @@ Follow the project's CLAUDE.md strictly:
    ```
    Apply any suggested improvements, then re-run steps 1-2 if changes were made.
 
-4. Push with `/thunderpush monitor` — this commits, pushes, then waits for CI and bot reviews:
+4. Push and fix:
    ```
-   Skill(skill="thunderpush", args="monitor")
+   Skill(skill="thunderpush")
+   Skill(skill="thunderfix")
    ```
 
 Never manually run `git add`, `git commit`, or `git push`. This ensures atomic, conventional commits with proper formatting.
@@ -257,16 +258,13 @@ linear issue update <identifier> --state "In Review"
 
 ## Phase 10: CI & Address Feedback
 
-This phase is handled automatically by `/thunderpush monitor` (used in Phase 7). By this point, the last push should have already passed CI and addressed bot feedback.
+This phase is handled automatically by `/thunderfix` (used in Phase 7). By this point, the last push should have already passed CI and addressed bot feedback.
 
-If the PR was finalized in Phase 9 without a `/thunderpush monitor` cycle (e.g., only `gh pr ready` was run), do a final check:
+If the PR was finalized in Phase 9 without a `/thunderfix` cycle (e.g., only `gh pr ready` was run), do a final check:
 
-```bash
-PR_NUMBER=$(gh pr list --head "$BRANCH" --json number --jq '.[0].number')
-gh pr checks "$PR_NUMBER" --watch --fail-fast
 ```
-
-If CI fails, fix, then push with `/thunderpush monitor` to handle the full feedback loop.
+Skill(skill="thunderfix")
+```
 
 ## Phase 11: Cleanup & Report
 
