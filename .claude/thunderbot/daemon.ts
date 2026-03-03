@@ -144,11 +144,11 @@ const pollAndWork = async (state: DaemonState) => {
   }
 
   // linear issue list outputs a human-readable table — parse identifiers from it
-  const issues: Array<{ identifier: string; title: string }> = []
+  const issues: Array<{ identifier: string; title: string; goodForBot: boolean }> = []
   for (const line of stdout.split('\n')) {
     const match = line.match(/\b(THU-\d+)\b\s+(.+?)(?:\s{2,}|$)/)
     if (match) {
-      issues.push({ identifier: match[1], title: match[2].trim() })
+      issues.push({ identifier: match[1], title: match[2].trim(), goodForBot: /Good For/i.test(line) })
     }
   }
 
@@ -160,7 +160,12 @@ const pollAndWork = async (state: DaemonState) => {
     return
   }
 
-  const candidate = candidates[0]
+  // Prioritize tasks labeled "Good For Bot" before falling back to priority order
+  const goodForBotCandidates = candidates.filter((c) => c.goodForBot)
+  const candidate = goodForBotCandidates.length > 0 ? goodForBotCandidates[0] : candidates[0]
+  if (goodForBotCandidates.length > 0) {
+    log(`Found ${goodForBotCandidates.length} "Good For Bot" task(s) — prioritizing`)
+  }
   log(`Selected task: ${candidate.identifier} — ${candidate.title}`)
 
   state.activeTasks.push(candidate.identifier)
