@@ -61,8 +61,8 @@ check "gh" \
   "install with: brew install gh && gh auth login"
 
 check "linear" \
-  "linear --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+'" \
-  "install with: brew install schpet/tap/linear"
+  "linear auth whoami >/dev/null 2>&1 && echo \"\$(linear --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+'), authenticated\"" \
+  "install with: brew install schpet/tap/linear && linear auth login"
 
 check "cargo" \
   "cargo --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+'" \
