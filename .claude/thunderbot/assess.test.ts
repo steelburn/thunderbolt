@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { assessTask, scoreTask } from './assess'
+import { assessTask, getLabelNames, scoreTask } from './assess'
 import type { LinearIssue } from './types'
 
 const makeIssue = (overrides: Partial<LinearIssue> = {}): LinearIssue => ({
@@ -15,6 +15,17 @@ const makeIssue = (overrides: Partial<LinearIssue> = {}): LinearIssue => ({
   assignee: null,
   url: 'https://linear.app/team/issue/THU-100',
   ...overrides,
+})
+
+describe('getLabelNames', () => {
+  test('returns lowercase label names', () => {
+    const issue = makeIssue({ labels: { nodes: [{ name: 'Good For Bot' }, { name: 'INFRA' }] } })
+    expect(getLabelNames(issue)).toEqual(['good for bot', 'infra'])
+  })
+
+  test('returns empty array when no labels', () => {
+    expect(getLabelNames(makeIssue())).toEqual([])
+  })
 })
 
 describe('assessTask', () => {
@@ -108,6 +119,41 @@ describe('assessTask', () => {
     expect(withCriteria.confidence).toBeGreaterThan(without.confidence)
   })
 
+  test('boosts confidence for "Good For Bot" label', () => {
+    const without = assessTask(makeIssue())
+    const withLabel = assessTask(makeIssue({
+      labels: { nodes: [{ name: 'Good For Bot' }] },
+    }))
+    expect(withLabel.confidence).toBeGreaterThan(without.confidence)
+    expect(withLabel.reasons).toContainEqual(expect.stringContaining('priority label'))
+  })
+
+  test('matches priority labels case-insensitively', () => {
+    const result = assessTask(makeIssue({
+      labels: { nodes: [{ name: 'GOOD FOR BOT' }] },
+    }))
+    expect(result.reasons).toContainEqual(expect.stringContaining('priority label'))
+  })
+
+  test('clamps confidence to 0-100', () => {
+    // Stack every positive signal to push confidence above 100
+    const maxed = assessTask(makeIssue({
+      estimate: 2,
+      labels: { nodes: [{ name: 'Good For Bot' }] },
+      description: 'Fix the broken login button.\n\n- [ ] Fix click handler\n- [ ] Add test\n- [x] Verify auth flow works correctly after the fix is applied',
+    }))
+    expect(maxed.confidence).toBeLessThanOrEqual(100)
+
+    // Stack every negative signal to push confidence below 0
+    const minimized = assessTask(makeIssue({
+      estimate: 8,
+      labels: { nodes: [{ name: 'infra' }, { name: 'devops' }] },
+      title: 'Research and discuss and investigate and explore',
+      description: 'x',
+    }))
+    expect(minimized.confidence).toBeGreaterThanOrEqual(0)
+  })
+
   test('determines complexity from estimate', () => {
     expect(assessTask(makeIssue({ estimate: null, description: 'x' })).complexity).toBe('trivial')
     expect(assessTask(makeIssue({ estimate: 1 })).complexity).toBe('small')
@@ -138,6 +184,16 @@ describe('scoreTask', () => {
     if (tooLarge !== -1) {
       expect(small).toBeGreaterThan(tooLarge)
     }
+  })
+
+  test('strongly boosts score for "Good For Bot" label', () => {
+    const without = scoreTask(makeIssue())
+    const withLabel = scoreTask(makeIssue({
+      labels: { nodes: [{ name: 'Good For Bot' }] },
+    }))
+    expect(withLabel).toBeGreaterThan(without)
+    // The label adds +50 in scoreTask plus up to +20 confidence (may be clamped at 100)
+    expect(withLabel - without).toBeGreaterThanOrEqual(50)
   })
 
   test('well-described actionable tasks score highest', () => {
