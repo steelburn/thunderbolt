@@ -46,10 +46,10 @@ export const ModeSelector = ({ modes, selectedMode, onModeChange, iconOnly = fal
   const renderTrigger = (selected: SearchableMenuItem<ModeItemData> | undefined, isOpen: boolean) => (
     <div
       className={cn(
-        'flex items-center rounded-lg cursor-pointer transition-colors text-[length:var(--font-size-sm)] border border-border',
+        'flex items-center rounded-lg cursor-pointer transition-colors text-[length:var(--font-size-body)]',
         iconOnly
           ? 'size-[var(--touch-height-default)] justify-center'
-          : 'gap-1 px-[var(--spacing-x-sm)] py-[var(--spacing-y-sm)]',
+          : 'gap-2 px-[var(--spacing-x-md)] py-[var(--spacing-y-sm)]',
         isOpen ? 'bg-secondary' : 'hover:bg-secondary/50',
       )}
     >
@@ -64,8 +64,8 @@ export const ModeSelector = ({ modes, selectedMode, onModeChange, iconOnly = fal
     return (
       <div
         className={cn(
-          'w-full flex items-center gap-2 px-[var(--spacing-x-md)] py-[var(--spacing-y-md)] rounded-xl transition-colors text-left cursor-pointer',
-          isSelected ? 'bg-muted' : 'hover:bg-accent/50',
+          'w-full flex items-center gap-2 px-[var(--spacing-x-md)] py-[var(--spacing-y-default)] rounded-xl transition-colors text-left cursor-pointer',
+          isSelected ? 'bg-accent' : 'hover:bg-accent/50',
         )}
       >
         {item.icon}
@@ -88,7 +88,6 @@ export const ModeSelector = ({ modes, selectedMode, onModeChange, iconOnly = fal
       renderItem={renderItem}
       width={280}
       maxHeight={300}
-      contentClassName="rounded-2xl shadow-lg overflow-hidden"
     />
   )
 }
