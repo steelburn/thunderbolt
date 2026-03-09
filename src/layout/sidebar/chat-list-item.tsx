@@ -83,7 +83,7 @@ export const ChatListItem = ({
             />
           </DropdownMenuTrigger>
         </SidebarMenuButton>
-        <DropdownMenuContent side="right" align="start" className="min-w-56 rounded-lg">
+        <DropdownMenuContent side="right" align="start" className="min-w-56">
           <DropdownMenuItem
             onClick={() => {
               threadIdRef.current = thread.id
