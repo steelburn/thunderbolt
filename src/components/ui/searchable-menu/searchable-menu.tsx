@@ -204,6 +204,7 @@ export const SearchableMenu = <T,>({
       <PopoverContent
         align={isMobile ? 'center' : align}
         side={side}
+        sideOffset={7}
         collisionPadding={16}
         className={cn(
           'p-0 rounded-[var(--radius-2xl)] shadow-lg overflow-hidden duration-100',
@@ -233,7 +234,7 @@ export const SearchableMenu = <T,>({
             className="overflow-y-auto"
             style={{ maxHeight: typeof maxHeight === 'number' ? `${maxHeight}px` : maxHeight }}
           >
-            <div className={cn('flex flex-col gap-4 px-2 pb-2', !searchable && 'pt-2')}>
+            <div className={cn('flex flex-col gap-4 px-2', !searchable && 'pt-2', !footer && 'pb-2')}>
               {isGroupedItems(filteredItems) ? (
                 filteredItems.map((group) => (
                   <GroupSection
