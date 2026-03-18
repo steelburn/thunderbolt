@@ -96,6 +96,7 @@ export const SyncSetupModal = ({ open, onOpenChange, onComplete }: SyncSetupModa
         {state.step === 'import-recovery-key' && (
           <ImportRecoveryKeyStep
             isVerifying={state.isVerifying}
+            error={state.error}
             onVerify={actions.startRecoveryKeyVerification}
           />
         )}

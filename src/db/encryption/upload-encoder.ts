@@ -26,7 +26,7 @@ type CrudOperation = {
  * Encodes encrypted columns in a CRUD operation before upload.
  * Returns the operation unchanged if the table has no encrypted columns or op is DELETE.
  */
-export const encodeForUpload = (operation: CrudOperation): CrudOperation => {
+export const encodeForUpload = async (operation: CrudOperation): Promise<CrudOperation> => {
   if (!isEncryptionEnabled() || operation.op === 'DELETE' || !operation.data) {
     return operation
   }
@@ -40,7 +40,7 @@ export const encodeForUpload = (operation: CrudOperation): CrudOperation => {
   for (const col of columns) {
     const value = encodedData[col]
     if (typeof value === 'string') {
-      encodedData[col] = codec.encode(value)
+      encodedData[col] = await codec.encode(value)
     }
   }
 

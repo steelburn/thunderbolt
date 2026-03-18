@@ -4,13 +4,16 @@ import { useState } from 'react'
 
 type ImportRecoveryKeyStepProps = {
   isVerifying: boolean
-  onVerify: () => void
+  error: string | null
+  onVerify: (hexKey: string) => void
 }
 
-export const ImportRecoveryKeyStep = ({ isVerifying, onVerify }: ImportRecoveryKeyStepProps) => {
+export const ImportRecoveryKeyStep = ({ isVerifying, error, onVerify }: ImportRecoveryKeyStepProps) => {
   const [recoveryKey, setRecoveryKey] = useState('')
 
   const isValid = recoveryKey.replace(/\s+/g, '').length === 64
+
+  const handleVerify = () => onVerify(recoveryKey.replace(/\s+/g, ''))
 
   return (
     <div className="flex flex-col gap-4">
@@ -29,12 +32,14 @@ export const ImportRecoveryKeyStep = ({ isVerifying, onVerify }: ImportRecoveryK
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey && isValid) {
             e.preventDefault()
-            onVerify()
+            handleVerify()
           }
         }}
       />
 
-      <Button disabled={!isValid || isVerifying} onClick={onVerify}>
+      {error && <p className="text-sm text-destructive">{error}</p>}
+
+      <Button disabled={!isValid || isVerifying} onClick={handleVerify}>
         {isVerifying ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />

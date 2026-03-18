@@ -1,4 +1,4 @@
-import { createNewKey, importFromPassphrase } from '@/crypto'
+import { createNewKey, importFromPassphrase, importFromRecoveryKey } from '@/crypto'
 import type { KeySetupResult } from '@/crypto'
 import { useEffect, useReducer, useRef } from 'react'
 
@@ -205,13 +205,24 @@ export const useSyncSetupState = () => {
       }
     },
 
-    startRecoveryKeyVerification: () => {
+    startRecoveryKeyVerification: async (hexKey: string) => {
       dispatch({ type: 'SET_VERIFYING', payload: true })
-      clearPendingTimeout()
-      timeoutRef.current = setTimeout(() => {
-        setEncryptionKeyState('KEY_PRESENT')
-        dispatch({ type: 'VERIFY_SUCCESS' })
-      }, 1500)
+      try {
+        const result = await importFromRecoveryKey(hexKey)
+        if (abortRef.current) {
+          return
+        }
+        if (result.success) {
+          dispatch({ type: 'VERIFY_SUCCESS' })
+        } else {
+          dispatch({ type: 'SET_ERROR', payload: getErrorMessage(result) })
+        }
+      } catch {
+        if (abortRef.current) {
+          return
+        }
+        dispatch({ type: 'SET_ERROR', payload: 'Verification failed. Please try again.' })
+      }
     },
 
     skipPasskey: () => dispatch({ type: 'SKIP_PASSKEY' }),
