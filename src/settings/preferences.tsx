@@ -1,7 +1,7 @@
 import { useAuth } from '@/contexts'
 import { useSignInModal } from '@/contexts/sign-in-modal-context'
 import { useCountryUnits } from '@/hooks/use-country-units'
-import { useLocationSearch, type LocationData } from '@/hooks/use-location-search'
+import type { LocationData } from '@/hooks/use-location-search'
 import { useLocalizationDropdowns } from '@/hooks/use-localization-dropdowns'
 import { useSettings } from '@/hooks/use-settings'
 import { useUnitsOptions } from '@/hooks/use-units-options'
@@ -15,6 +15,7 @@ import { ChevronsUpDown } from 'lucide-react'
 import ky from 'ky'
 import { useEffect, useReducer, useRef, useState } from 'react'
 
+import { LocationSearchCombobox } from '@/components/location-search-combobox'
 import { ModificationIndicator } from '@/components/modification-indicator'
 import { TelemetryRequiredModal, type TelemetryRequiredModalRef } from '@/components/telemetry-required-modal'
 import { TelemetryWarningModal, type TelemetryWarningModalRef } from '@/components/telemetry-warning-modal'
@@ -33,7 +34,7 @@ import {
 import { SyncEnableWarningDialog } from '@/components/sync-enable-warning-dialog'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/ui/page-header'
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
+import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { SectionCard } from '@/components/ui/section-card'
@@ -85,7 +86,6 @@ const preferencesReducer = (state: PreferencesState, action: PreferencesAction):
 export default function PreferencesSettingsPage() {
   const [state, dispatch] = useReducer(preferencesReducer, initialState)
   const { isResetting, isDeletingAccount, localizationDialogOpen, pendingCountryUnits } = state
-  const locationSearch = useLocationSearch()
   const authClient = useAuth()
   const { data: session } = authClient.useSession()
   const isAuthenticated = !!session?.user
@@ -232,8 +232,6 @@ export default function PreferencesSettingsPage() {
       locationLat.setValue(String(location.coordinates.lat)),
       locationLng.setValue(String(location.coordinates.lng)),
     ])
-
-    locationSearch.setOpen(false)
 
     trackEvent(wasSet ? 'settings_location_update' : 'settings_location_set', {
       location_name: location.name,
@@ -433,68 +431,7 @@ export default function PreferencesSettingsPage() {
             >
               Location
             </ModificationIndicator>
-            <Popover
-              open={locationSearch.open}
-              onOpenChange={(newOpen) => {
-                locationSearch.setOpen(newOpen)
-                if (!newOpen) {
-                  locationSearch.clearSearch()
-                }
-              }}
-            >
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={locationSearch.open}
-                  className={cn('w-full justify-between rounded-lg', !locationName.value && 'text-muted-foreground')}
-                >
-                  {locationName.value || 'Select location...'}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent
-                className="rounded-lg p-0 w-[--radix-popover-trigger-width]"
-                side="bottom"
-                align="start"
-                sideOffset={4}
-              >
-                <Command>
-                  <CommandInput
-                    placeholder="Search for locations..."
-                    value={locationSearch.searchQuery}
-                    onValueChange={locationSearch.setSearchQuery}
-                  />
-                  <CommandList>
-                    {locationSearch.searchQuery.trim().length > 0 && locationSearch.isSearching && (
-                      <div className="py-6 text-center text-sm">
-                        <div className="inline-flex items-center gap-2">
-                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
-                          Searching...
-                        </div>
-                      </div>
-                    )}
-                    {locationSearch.searchQuery.trim().length > 0 &&
-                      !locationSearch.isSearching &&
-                      locationSearch.locations.length === 0 && <CommandEmpty>No locations found.</CommandEmpty>}
-                    {!locationSearch.isSearching && locationSearch.locations.length > 0 && (
-                      <CommandGroup>
-                        {locationSearch.locations.map((location) => (
-                          <CommandItem
-                            key={`${location.coordinates.lat}-${location.coordinates.lng}`}
-                            value={location.name}
-                            onSelect={() => handleSelectLocation(location)}
-                            className="pl-2"
-                          >
-                            {location.name}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    )}
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+            <LocationSearchCombobox value={locationName.value} onSelect={handleSelectLocation} />
             <p className="text-sm text-muted-foreground">Enables location-based responses</p>
           </div>
 

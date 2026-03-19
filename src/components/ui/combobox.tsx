@@ -41,7 +41,9 @@ export const Combobox = ({
   const selected = items.find((item) => item.id === value)
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return items
+    if (!search.trim()) {
+      return items
+    }
     const q = search.toLowerCase()
     return items.filter(
       (item) =>
@@ -52,7 +54,9 @@ export const Combobox = ({
   }, [items, search])
 
   useEffect(() => {
-    if (!open) setSearch('')
+    if (!open) {
+      setSearch('')
+    }
   }, [open])
 
   useEffect(() => {
