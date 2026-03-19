@@ -67,6 +67,7 @@ export const ModelSelect = memo(({ chatThread, models, selectedModelId, onModelC
       trigger={renderTrigger}
       width={220}
       maxHeight={250}
+      align="end"
     />
   )
 })

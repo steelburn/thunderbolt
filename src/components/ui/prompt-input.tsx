@@ -4,7 +4,7 @@ import { type ChatThread } from '@/layout/sidebar/types'
 import type { Model } from '@/types'
 import { ArrowUp, Square } from 'lucide-react'
 import { type FormEvent, forwardRef, type ChangeEvent, type KeyboardEvent, type ReactNode } from 'react'
-import { ModelSelect } from './model-select'
+import { ModelSelector } from './model-selector'
 
 type PromptInputProps = {
   value: string
@@ -25,8 +25,8 @@ type PromptInputProps = {
   // Model selection props - optional, only used in automation modal
   chatThread?: ChatThread | null
   models?: Model[]
-  selectedModelId?: string
-  onModelChange?: (model: string | null) => void
+  selectedModel?: Model | null
+  onModelChange?: (modelId: string) => void
 }
 
 /**
@@ -52,7 +52,7 @@ export const PromptInput = forwardRef<HTMLFormElement, PromptInputProps>(
       isMobile,
       chatThread = null,
       models,
-      selectedModelId,
+      selectedModel,
       onModelChange,
     },
     ref,
@@ -116,11 +116,13 @@ export const PromptInput = forwardRef<HTMLFormElement, PromptInputProps>(
 
           <div className="flex gap-2 items-center">
             {showModelSelect && (
-              <ModelSelect
+              <ModelSelector
                 chatThread={chatThread}
                 models={models}
-                selectedModelId={selectedModelId}
+                selectedModel={selectedModel ?? null}
                 onModelChange={onModelChange}
+                side="top"
+                align="end"
               />
             )}
 
@@ -149,11 +151,13 @@ export const PromptInput = forwardRef<HTMLFormElement, PromptInputProps>(
 
           <div className="flex gap-2 items-center">
             {showModelSelect && (
-              <ModelSelect
+              <ModelSelector
                 chatThread={chatThread}
                 models={models}
-                selectedModelId={selectedModelId}
+                selectedModel={selectedModel ?? null}
                 onModelChange={onModelChange}
+                side="top"
+                align="end"
               />
             )}
 

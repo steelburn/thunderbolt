@@ -12,6 +12,8 @@ export type ModelSelectorProps = {
   chatThread: ChatThread | null
   onModelChange: (modelId: string) => void
   onAddModels?: () => void
+  side?: 'top' | 'bottom' | 'left' | 'right'
+  align?: 'start' | 'center' | 'end'
 }
 
 type ModelItemData = {
@@ -88,6 +90,8 @@ export const ModelSelector = ({
   chatThread,
   onModelChange,
   onAddModels,
+  side,
+  align,
 }: ModelSelectorProps) => {
   const groupedItems = useMemo(() => categorizeModels(models, chatThread), [models, chatThread])
 
@@ -157,6 +161,8 @@ export const ModelSelector = ({
       footer={footer}
       width={320}
       maxHeight={340}
+      side={side}
+      align={align}
     />
   )
 }

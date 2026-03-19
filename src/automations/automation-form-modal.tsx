@@ -103,9 +103,9 @@ export default function AutomationFormModal({
   })
 
   const handleModelChange = useCallback(
-    (value: string | null) => {
+    (value: string) => {
       setModelId(value)
-      form.setValue('modelId', value || '')
+      form.setValue('modelId', value)
     },
     [form],
   )
@@ -323,7 +323,7 @@ export default function AutomationFormModal({
                   onChange={handlePromptChange}
                   placeholder="Enter your prompt here..."
                   models={models}
-                  selectedModelId={modelId ?? undefined}
+                  selectedModel={models.find((m) => m.id === modelId) ?? null}
                   onModelChange={handleModelChange}
                   showSubmitButton={false}
                   noForm

@@ -287,7 +287,7 @@ const PromptCard = memo(({ prompt, triggersEnabled, onRun, onEdit, onDelete, onR
   return (
     <Card>
       <CardContent className="px-5 py-4">
-        <div className="flex items-start gap-4">
+        <div className="flex items-center gap-4">
           {/* Left: Title + preview */}
           <div className="flex-1 min-w-0">
             <ModificationIndicator
@@ -301,7 +301,7 @@ const PromptCard = memo(({ prompt, triggersEnabled, onRun, onEdit, onDelete, onR
             >
               {prompt.title || 'Untitled Automation'}
             </ModificationIndicator>
-            <p className="text-sm text-muted-foreground mt-0.5 line-clamp-3">{prompt.prompt}</p>
+            <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">{prompt.prompt}</p>
           </div>
 
           {/* Right: Toggle + actions */}
