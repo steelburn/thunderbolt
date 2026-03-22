@@ -130,7 +130,8 @@ export type EventType =
   | 'chat_new_clicked'
   | 'chat_delete'
   | 'chat_clear_all'
-  // Model & Settings
+  // Agent, Model & Settings
+  | 'agent_select'
   | 'model_select'
   | 'mode_select'
   | 'settings_theme_set'

@@ -64,10 +64,9 @@ export const createBuiltInAgent = (deps: BuiltInAgentDeps) => {
 
   const agent: (conn: AgentSideConnection) => Agent = (conn) => ({
     initialize: async (_params: InitializeRequest): Promise<InitializeResponse> => ({
-      name: 'Thunderbolt',
-      version: '1.0.0',
+      agentInfo: { name: 'Thunderbolt', version: '1.0.0' },
       protocolVersion: 1,
-      capabilities: {
+      agentCapabilities: {
         promptCapabilities: {
           image: true,
           audio: false,
@@ -88,7 +87,7 @@ export const createBuiltInAgent = (deps: BuiltInAgentDeps) => {
 
       return {
         sessionId: crypto.randomUUID(),
-        modeState: {
+        modes: {
           currentModeId,
           availableModes: sessionModes,
         },
@@ -102,10 +101,10 @@ export const createBuiltInAgent = (deps: BuiltInAgentDeps) => {
 
     setSessionConfigOption: async (params: SetSessionConfigOptionRequest): Promise<SetSessionConfigOptionResponse> => {
       if (params.configId === 'model') {
-        deps.onModelChange?.(params.value)
+        deps.onModelChange?.(String(params.value))
       }
       const models = deps.getModels()
-      const currentModelId = params.configId === 'model' ? params.value : deps.getSelectedModelId()
+      const currentModelId = params.configId === 'model' ? String(params.value) : deps.getSelectedModelId()
       return {
         configOptions: [modelsToConfigOption(models, currentModelId)],
       }

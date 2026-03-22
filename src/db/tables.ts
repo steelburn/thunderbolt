@@ -228,3 +228,28 @@ export const devicesTable = sqliteTable('devices', {
   createdAt: text('created_at'),
   revokedAt: text('revoked_at'),
 })
+
+export const agentsTable = sqliteTable(
+  'agents',
+  {
+    id: text('id').primaryKey(),
+    name: text('name'),
+    type: text('type', { enum: ['built-in', 'local', 'remote'] }),
+    transport: text('transport', { enum: ['in-process', 'stdio', 'websocket'] }),
+    command: text('command'),
+    args: text('args'),
+    url: text('url'),
+    authMethod: text('auth_method'),
+    icon: text('icon'),
+    isSystem: integer('is_system').default(0),
+    enabled: integer('enabled').default(1),
+    deletedAt: text('deleted_at'),
+    defaultHash: text('default_hash'),
+    userId: text('user_id'),
+  },
+  (table) => [
+    index('idx_agents_active')
+      .on(table.id)
+      .where(sql`${table.deletedAt} IS NULL`),
+  ],
+)

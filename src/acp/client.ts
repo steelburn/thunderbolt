@@ -6,8 +6,6 @@ import {
   type RequestPermissionRequest,
   type RequestPermissionResponse,
   type Stream,
-  type SessionMode,
-  type SessionConfigOption,
 } from '@agentclientprotocol/sdk'
 import type { AgentSessionState } from './types'
 
@@ -46,7 +44,10 @@ export const createAcpClient = ({ stream, onSessionUpdate, onPermissionRequest }
       }
       // Default: allow once
       const allowOption = params.options.find((o) => o.kind === 'allow_once')
-      return allowOption ? { outcome: 'selected', optionId: allowOption.optionId } : { outcome: 'cancelled' }
+      if (allowOption) {
+        return { outcome: { outcome: 'selected' as const, optionId: allowOption.optionId } }
+      }
+      return { outcome: { outcome: 'cancelled' as const } }
     },
   })
 
@@ -59,7 +60,7 @@ export const createAcpClient = ({ stream, onSessionUpdate, onPermissionRequest }
       const result = await connection.initialize({
         clientInfo: { name: 'Thunderbolt', version: '1.0.0' },
         protocolVersion: 1,
-        capabilities: {
+        clientCapabilities: {
           fs: { readTextFile: false, writeTextFile: false },
           terminal: false,
         },
@@ -74,8 +75,8 @@ export const createAcpClient = ({ stream, onSessionUpdate, onPermissionRequest }
       })
       sessionState = {
         sessionId: result.sessionId,
-        availableModes: result.modeState?.availableModes ?? [],
-        currentModeId: result.modeState?.currentModeId ?? null,
+        availableModes: result.modes?.availableModes ?? [],
+        currentModeId: result.modes?.currentModeId ?? null,
         configOptions: result.configOptions ?? [],
       }
       return sessionState

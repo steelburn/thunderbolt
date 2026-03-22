@@ -1,5 +1,5 @@
 import { useChatStore } from '@/chats/chat-store'
-import type { AutomationRun, ChatThread, Mode, Model, ThunderboltUIMessage } from '@/types'
+import type { Agent, AutomationRun, ChatThread, Mode, Model, ThunderboltUIMessage } from '@/types'
 import { type Chat } from '@ai-sdk/react'
 import { mock } from 'bun:test'
 
@@ -164,6 +164,26 @@ const defaultTestMode: Mode = {
 } as Mode
 
 /**
+ * Default agent used when selectedAgent is not specified
+ */
+const defaultTestAgent: Agent = {
+  id: 'default-agent',
+  name: 'Test Agent',
+  type: 'built-in',
+  transport: 'in-process',
+  command: null,
+  args: null,
+  url: null,
+  authMethod: null,
+  icon: 'zap',
+  isSystem: 1,
+  enabled: 1,
+  deletedAt: null,
+  defaultHash: null,
+  userId: null,
+}
+
+/**
  * Default model used when selectedModel is null but a session needs to be created
  */
 const defaultTestModel: Model = {
@@ -215,6 +235,7 @@ export const hydrateStore = (state: {
       id: state.id,
       retryCount: 0,
       retriesExhausted: false,
+      selectedAgent: defaultTestAgent,
       selectedMode: state.selectedMode ?? defaultTestMode,
       selectedModel: state.selectedModel ?? defaultTestModel,
       triggerData: state.triggerData,
@@ -236,6 +257,7 @@ export const hydrateStore = (state: {
 export const resetStore = () => {
   useChatStore.setState({
     currentSessionId: null,
+    agents: [],
     mcpClients: [],
     modes: [],
     models: [],

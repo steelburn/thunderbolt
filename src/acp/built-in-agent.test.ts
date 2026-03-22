@@ -1,5 +1,5 @@
 import { describe, expect, test, mock } from 'bun:test'
-import { AgentSideConnection, type PromptResponse, type SessionNotification } from '@agentclientprotocol/sdk'
+import { AgentSideConnection, type SessionNotification } from '@agentclientprotocol/sdk'
 import { createBuiltInAgent } from './built-in-agent'
 import { createAcpClient } from './client'
 import { createInProcessStreams } from './streams'
@@ -109,7 +109,7 @@ describe('built-in agent via ACP', () => {
 
     const result = await client.initialize()
 
-    expect(result.name).toBe('Thunderbolt')
+    expect(result.agentInfo?.name).toBe('Thunderbolt')
     expect(result.protocolVersion).toBe(1)
   })
 
