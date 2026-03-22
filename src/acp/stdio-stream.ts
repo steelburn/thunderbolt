@@ -14,7 +14,7 @@ export type TauriCommandSpawner = (
   kill: () => Promise<void>
 }
 
-type StdioStreamResult = {
+export type StdioStreamResult = {
   stream: Stream
   process: {
     kill: () => Promise<void>

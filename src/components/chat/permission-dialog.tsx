@@ -1,5 +1,6 @@
 import type { PermissionOption, RequestPermissionRequest, ToolCallContent } from '@agentclientprotocol/sdk'
-import { FileEdit, Play, Shield, ShieldOff } from 'lucide-react'
+import { getToolKindIcon } from '@/lib/tool-metadata'
+import { DotIcon, Shield, ShieldOff } from 'lucide-react'
 import { DiffBlock } from './diff-block'
 
 type PermissionDialogProps = {
@@ -29,28 +30,11 @@ const getPermissionVariant = (kind: PermissionOption['kind']) => {
   }
 }
 
-const getToolKindIcon = (kind?: string | null) => {
-  switch (kind) {
-    case 'edit':
-    case 'delete':
-    case 'move':
-      return FileEdit
-    case 'execute':
-      return Play
-    default:
-      return Shield
-  }
-}
-
 const formatLocation = (path: string, line?: number | null): string => (line ? `${path}:${line}` : path)
 
-/**
- * Permission request dialog shown when an ACP agent needs user authorization
- * for a sensitive operation. Displays tool call details and permission options.
- */
 export const PermissionDialog = ({ request, onSelect }: PermissionDialogProps) => {
   const { toolCall, options } = request
-  const ToolIcon = getToolKindIcon(toolCall.kind)
+  const ToolIcon = (toolCall.kind && getToolKindIcon(toolCall.kind)) || DotIcon
 
   const diffContent = toolCall.content?.find((c): c is ToolCallContent & { type: 'diff' } => c.type === 'diff')
 

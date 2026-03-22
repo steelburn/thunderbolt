@@ -27,7 +27,6 @@ const getItemData = (part: ReasoningGroupItem, isGroupReasoning: boolean) => {
     case 'tool': {
       const toolPart = part.content as ToolUIPart
 
-      // Use ACP ToolKind metadata if available (from external ACP agents)
       if (part.acpMetadata?.kind) {
         const kind = part.acpMetadata.kind
         const acpIcon = getToolKindIcon(kind)
@@ -39,7 +38,6 @@ const getItemData = (part: ReasoningGroupItem, isGroupReasoning: boolean) => {
         }
       }
 
-      // Fallback to built-in tool metadata
       const [, toolName] = splitPartType(toolPart.type)
       const metadata = getToolMetadataSync(toolName)
 

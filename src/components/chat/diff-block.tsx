@@ -1,3 +1,5 @@
+import { useMemo } from 'react'
+
 type DiffBlockProps = {
   path: string
   oldText?: string
@@ -20,13 +22,9 @@ const computeDiffLines = (oldText: string | undefined, newText: string): DiffLin
 
   const oldLines = oldText.split('\n')
   const newLines = newText.split('\n')
-  const result: DiffLine[] = []
 
-  // Simple LCS-based diff
   const lcs = buildLcsTable(oldLines, newLines)
-  traceLcs(oldLines, newLines, lcs, oldLines.length, newLines.length, result)
-
-  return result
+  return traceLcs(oldLines, newLines, lcs)
 }
 
 const buildLcsTable = (oldLines: string[], newLines: string[]): number[][] => {
@@ -44,26 +42,27 @@ const buildLcsTable = (oldLines: string[], newLines: string[]): number[][] => {
   return table
 }
 
-const traceLcs = (
-  oldLines: string[],
-  newLines: string[],
-  table: number[][],
-  i: number,
-  j: number,
-  result: DiffLine[],
-): void => {
-  if (i === 0 && j === 0) return
+/** Iterative LCS backtrack — avoids stack overflow on large files. */
+const traceLcs = (oldLines: string[], newLines: string[], table: number[][]): DiffLine[] => {
+  const result: DiffLine[] = []
+  let i = oldLines.length
+  let j = newLines.length
 
-  if (i > 0 && j > 0 && oldLines[i - 1] === newLines[j - 1]) {
-    traceLcs(oldLines, newLines, table, i - 1, j - 1, result)
-    result.push({ type: 'unchanged', text: oldLines[i - 1] })
-  } else if (j > 0 && (i === 0 || table[i][j - 1] >= table[i - 1][j])) {
-    traceLcs(oldLines, newLines, table, i, j - 1, result)
-    result.push({ type: 'added', text: newLines[j - 1] })
-  } else if (i > 0) {
-    traceLcs(oldLines, newLines, table, i - 1, j, result)
-    result.push({ type: 'removed', text: oldLines[i - 1] })
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && oldLines[i - 1] === newLines[j - 1]) {
+      result.push({ type: 'unchanged', text: oldLines[i - 1] })
+      i--
+      j--
+    } else if (j > 0 && (i === 0 || table[i][j - 1] >= table[i - 1][j])) {
+      result.push({ type: 'added', text: newLines[j - 1] })
+      j--
+    } else {
+      result.push({ type: 'removed', text: oldLines[i - 1] })
+      i--
+    }
   }
+
+  return result.reverse()
 }
 
 const lineStyles: Record<DiffLine['type'], string> = {
@@ -78,12 +77,8 @@ const linePrefix: Record<DiffLine['type'], string> = {
   unchanged: '  ',
 }
 
-/**
- * Renders an inline diff view for ACP diff content blocks.
- * Shows file path header and color-coded added/removed/unchanged lines.
- */
 export const DiffBlock = ({ path, oldText, newText }: DiffBlockProps) => {
-  const lines = computeDiffLines(oldText, newText)
+  const lines = useMemo(() => computeDiffLines(oldText, newText), [oldText, newText])
 
   return (
     <div className="rounded-lg border overflow-hidden text-xs font-mono">

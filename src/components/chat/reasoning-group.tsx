@@ -2,9 +2,9 @@ import { useObjectView } from '@/content-view/context'
 import { useAutoScroll } from '@/hooks/use-auto-scroll'
 import { type ReasoningGroupItem } from '@/lib/assistant-message'
 import { computeWallClockTime } from '@/lib/utils'
-import type { ToolCallContent } from '@agentclientprotocol/sdk'
 import { type ReasoningUIPart, type ToolUIPart } from 'ai'
 import { CheckIcon, Loader2 } from 'lucide-react'
+import { useMemo, type ReactNode } from 'react'
 import { Expandable } from '../ui/expandable'
 import { DiffBlock } from './diff-block'
 import { ReasoningDisplay } from './reasoning-display'
@@ -68,6 +68,30 @@ export const ReasoningGroup = ({
     rootMargin: '0px',
   })
 
+  const acpContentBlocks = useMemo<ReactNode[]>(() => {
+    const blocks: ReactNode[] = []
+    for (const part of parts) {
+      if (!part.acpMetadata?.content?.length) continue
+      for (let i = 0; i < part.acpMetadata.content.length; i++) {
+        const block = part.acpMetadata.content[i]
+        if (block.type === 'diff') {
+          blocks.push(
+            <div key={`${part.id}-diff-${i}`} className="mt-2 px-1">
+              <DiffBlock path={block.path} oldText={block.oldText ?? undefined} newText={block.newText} />
+            </div>,
+          )
+        } else if (block.type === 'terminal') {
+          blocks.push(
+            <div key={`${part.id}-terminal-${i}`} className="mt-2 px-1">
+              <TerminalBlock terminalId={block.terminalId} />
+            </div>,
+          )
+        }
+      }
+    }
+    return blocks
+  }, [parts])
+
   return (
     <div className="mt-6">
       <Expandable
@@ -97,27 +121,7 @@ export const ReasoningGroup = ({
           <div ref={scrollTargetRef} />
         </div>
       </Expandable>
-      {parts
-        .filter((part) => part.acpMetadata?.content && part.acpMetadata.content.length > 0)
-        .flatMap((part) =>
-          part.acpMetadata!.content!.map((block: ToolCallContent, i: number) => {
-            if (block.type === 'diff') {
-              return (
-                <div key={`${part.id}-diff-${i}`} className="mt-2 px-1">
-                  <DiffBlock path={block.path} oldText={block.oldText ?? undefined} newText={block.newText} />
-                </div>
-              )
-            }
-            if (block.type === 'terminal') {
-              return (
-                <div key={`${part.id}-terminal-${i}`} className="mt-2 px-1">
-                  <TerminalBlock terminalId={block.terminalId} />
-                </div>
-              )
-            }
-            return null
-          }),
-        )}
+      {acpContentBlocks}
       {!hasTextPart && (
         <ReasoningDisplay
           text={currentReasoningPart?.content.text}

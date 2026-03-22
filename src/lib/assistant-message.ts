@@ -93,12 +93,11 @@ export const groupMessageParts = (parts: GroupableUIPart[]): GroupedUIPart[] => 
     if (partType === 'tool' || partType === 'reasoning') {
       if (partType === 'tool') {
         const toolPart = part as ToolUIPart
-        const acpMeta = (toolPart as unknown as { acpMetadata?: AcpToolMetadata }).acpMetadata
         currentItems.push({
           type: 'tool',
           content: toolPart,
           id: toolPart.toolCallId,
-          ...(acpMeta ? { acpMetadata: acpMeta } : {}),
+          acpMetadata: (toolPart as unknown as { acpMetadata?: AcpToolMetadata }).acpMetadata,
         })
       } else {
         const reasoningPart = part as ReasoningUIPart

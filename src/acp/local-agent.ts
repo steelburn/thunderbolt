@@ -1,18 +1,8 @@
 import type { Agent } from '@/types'
 import type { ClientSideConnection, SessionConfigOption, SessionModeState, Stream } from '@agentclientprotocol/sdk'
+import type { StdioStreamResult } from './stdio-stream'
 import type { SessionUpdateHandler } from './types'
 
-type StdioStreamResult = {
-  stream: Stream
-  process: {
-    kill: () => Promise<void>
-    onClose: (handler: (code: number) => void) => void
-  }
-}
-
-/**
- * Dependencies injected into local agent connection for testability.
- */
 export type LocalAgentDependencies = {
   createStdioStream: (opts: { command: string; args: string[] }) => StdioStreamResult
   createClientConnection: (
@@ -31,7 +21,7 @@ export type LocalAgentConnection = {
   modes: SessionModeState | null
   configOptions: SessionConfigOption[]
   kill: () => Promise<void>
-  onExit: (handler: (code: number) => void) => void
+  onExit: (handler: (code: number) => void) => () => void
 }
 
 /**
@@ -53,7 +43,7 @@ export const connectToLocalAgent = async (
     args,
   })
 
-  const exitHandlers: Array<(code: number) => void> = []
+  const exitHandlers = new Set<(code: number) => void>()
 
   process.onClose((code: number) => {
     exitHandlers.forEach((handler) => handler(code))
@@ -80,7 +70,8 @@ export const connectToLocalAgent = async (
     configOptions: session.configOptions ?? [],
     kill: process.kill,
     onExit: (handler: (code: number) => void) => {
-      exitHandlers.push(handler)
+      exitHandlers.add(handler)
+      return () => exitHandlers.delete(handler)
     },
   }
 }

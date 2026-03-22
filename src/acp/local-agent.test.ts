@@ -236,8 +236,22 @@ describe('process exit handling', () => {
     const exitHandler = mock()
     result.onExit(exitHandler)
 
-    // Simulate crash
     deps.closeHandlers[0]?.(1)
     expect(exitHandler).toHaveBeenCalledWith(1)
+  })
+
+  test('onExit returns unsubscribe function', async () => {
+    const deps = createMockDeps()
+    const agent = createTestAgent()
+
+    const result = await connectToLocalAgent(agent, deps)
+
+    const exitHandler = mock()
+    const unsubscribe = result.onExit(exitHandler)
+
+    unsubscribe()
+
+    deps.closeHandlers[0]?.(0)
+    expect(exitHandler).not.toHaveBeenCalled()
   })
 })
