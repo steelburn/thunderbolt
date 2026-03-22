@@ -1,3 +1,7 @@
+import { createAcpClient } from '@/acp/client'
+import { createBuiltInAgentHandler } from '@/acp/built-in-agent'
+import { createInProcessStream } from '@/acp/streams'
+import { createBuiltInInference } from '@/acp/built-in-inference'
 import { useDatabase } from '@/contexts'
 import {
   getAllModes,
@@ -135,7 +139,34 @@ export const useHydrateChatStore = ({ id, isNew }: UseHydrateChatStoreParams) =>
       saveMessages,
     )
 
+    // Initialize ACP connection with built-in agent (Phase 1)
+    const { clientStream, agentStream } = createInProcessStream()
+    const agentHandler = createBuiltInAgentHandler({
+      modes,
+      models,
+      runInference: createBuiltInInference(),
+    })
+
+    const { connection } = createAcpClient({
+      stream: clientStream,
+      agentStream,
+      agentHandler,
+      onSessionUpdate: () => {
+        // Phase 1: session updates are handled by the Chat instance.
+        // Future phases will route updates to the UI directly.
+      },
+    })
+
+    const initResponse = await connection.initialize({ protocolVersion: 1 })
+    const acpNewSession = await connection.newSession({ cwd: '/', mcpServers: [] })
+
     createSession({
+      acpSession: {
+        sessionId: acpNewSession.sessionId,
+        modes: acpNewSession.modes ?? null,
+        configOptions: acpNewSession.configOptions ?? null,
+        connection,
+      },
       chatInstance,
       chatThread,
       id,

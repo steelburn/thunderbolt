@@ -1,3 +1,4 @@
+import type { AcpSessionInfo } from '@/acp/types'
 import { updateSettings } from '@/dal'
 import { getDb } from '@/db/database'
 import { type MCPClient } from '@/lib/mcp-provider'
@@ -8,6 +9,7 @@ import type { Chat } from '@ai-sdk/react'
 import { useShallow } from 'zustand/react/shallow'
 
 type ChatSession = {
+  acpSession: AcpSessionInfo | null
   chatInstance: Chat<ThunderboltUIMessage>
   chatThread: ChatThread | null
   id: string
