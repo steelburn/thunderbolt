@@ -1,7 +1,7 @@
 import { describe, expect, mock, test } from 'bun:test'
-import { createWebSocketStream, WS_OPEN, type WebSocketLike } from './websocket-stream'
+import { createWebSocketStream, wsOpen, type WebSocketLike } from './websocket-stream'
 
-const createMockWebSocket = (readyState = WS_OPEN): WebSocketLike & { _listeners: Map<string, Set<Function>> } => {
+const createMockWebSocket = (readyState = wsOpen): WebSocketLike & { _listeners: Map<string, Set<Function>> } => {
   const listeners = new Map<string, Set<Function>>()
 
   return {

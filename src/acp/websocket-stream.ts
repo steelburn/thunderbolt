@@ -11,8 +11,8 @@ export type WebSocketLike = {
   readyState: number
 }
 
-export const WS_OPEN = 1
-export const WS_CLOSED = 3
+export const wsOpen = 1
+export const wsClosed = 3
 
 /**
  * Create an ACP Stream from a WebSocket connection.
@@ -54,7 +54,7 @@ export const createWebSocketStream = (ws: WebSocketLike): Stream => {
   // WritableStream → WebSocket (outgoing messages)
   const writable = new WritableStream<Uint8Array>({
     write(chunk) {
-      if (ws.readyState !== WS_OPEN) {
+      if (ws.readyState !== wsOpen) {
         throw new Error('WebSocket is not open')
       }
       const decoder = new TextDecoder()

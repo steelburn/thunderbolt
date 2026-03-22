@@ -44,7 +44,9 @@ export const PermissionDialog = ({ request, onRespond }: PermissionDialogProps) 
   const kind = toolCall?.kind
 
   const handleSelect = (option: PermissionOption) => {
-    if (responded) return
+    if (responded) {
+      return
+    }
     setResponded(true)
     onRespond({
       outcome: { outcome: 'selected', optionId: option.optionId },

@@ -1,6 +1,6 @@
 import type { Stream } from '@agentclientprotocol/sdk'
 import type { AgentConfig } from './types'
-import { createWebSocketStream, type WebSocketLike, WS_OPEN } from './websocket-stream'
+import { createWebSocketStream, type WebSocketLike, wsOpen } from './websocket-stream'
 
 type WebSocketFactory = (url: string) => WebSocketLike
 
@@ -33,7 +33,7 @@ export const connectToRemoteAgent = async ({
 
   // Wait for connection to open
   await new Promise<void>((resolve, reject) => {
-    if (ws.readyState === WS_OPEN) {
+    if (ws.readyState === wsOpen) {
       resolve()
       return
     }

@@ -38,7 +38,9 @@ export const Header = () => {
   const showAgentSelector = isChatRoute && agents.length > 0
 
   const handleAgentChange = async (agentId: string) => {
-    if (!agentId) return
+    if (!agentId) {
+      return
+    }
     // Per ACP spec: a chat belongs to one agent. Switching agents creates a new chat.
     // Persist the agent selection, then navigate to a new chat which will use this agent.
     if (chatThreadId) {
@@ -48,11 +50,7 @@ export const Header = () => {
   }
 
   const agentSelector = showAgentSelector && (
-    <AgentSelector
-      agents={agents}
-      selectedAgent={selectedAgent ?? null}
-      onAgentChange={handleAgentChange}
-    />
+    <AgentSelector agents={agents} selectedAgent={selectedAgent ?? null} onAgentChange={handleAgentChange} />
   )
 
   // Mobile: 3-column layout with centered model selector

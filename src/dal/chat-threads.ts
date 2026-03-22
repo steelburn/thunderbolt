@@ -63,7 +63,9 @@ export const createChatThread = async (
 export const updateChatThread = async (
   db: AnyDrizzleDatabase,
   id: string,
-  data: Partial<Pick<ChatThread, 'agentId' | 'contextSize' | 'modeId' | 'title' | 'triggeredBy' | 'wasTriggeredByAutomation'>>,
+  data: Partial<
+    Pick<ChatThread, 'agentId' | 'contextSize' | 'modeId' | 'title' | 'triggeredBy' | 'wasTriggeredByAutomation'>
+  >,
 ): Promise<void> => {
   await db.update(chatThreadsTable).set(data).where(eq(chatThreadsTable.id, id))
 }

@@ -1,6 +1,6 @@
 import { describe, expect, mock, test } from 'bun:test'
 import { connectToRemoteAgent } from './remote-agent'
-import { WS_OPEN, type WebSocketLike } from './websocket-stream'
+import { wsOpen, type WebSocketLike } from './websocket-stream'
 import type { AgentConfig } from './types'
 
 const createMockWebSocket = (
@@ -9,7 +9,7 @@ const createMockWebSocket = (
   const listeners = new Map<string, Set<Function>>()
 
   const ws: WebSocketLike & { _trigger: (event: string, data?: unknown) => void } = {
-    readyState: autoConnect ? WS_OPEN : 0,
+    readyState: autoConnect ? wsOpen : 0,
     send: mock(() => {}),
     close: mock(() => {}),
     addEventListener: (event: string, handler: Function) => {
@@ -62,7 +62,7 @@ describe('connectToRemoteAgent', () => {
       createWebSocket: () => {
         // Trigger open after listeners are registered (next microtask)
         queueMicrotask(() => {
-          ws.readyState = WS_OPEN
+          ws.readyState = wsOpen
           ws._trigger('open')
         })
         return ws
