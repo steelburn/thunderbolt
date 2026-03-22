@@ -1,3 +1,4 @@
+export { defaultAgentBuiltIn, defaultAgents, hashAgent } from './agents'
 export {
   defaultAutomationDailyBrief,
   defaultAutomationImportantEmails,

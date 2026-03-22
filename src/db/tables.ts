@@ -23,6 +23,7 @@ export const chatThreadsTable = sqliteTable(
     wasTriggeredByAutomation: integer('was_triggered_by_automation').default(0),
     contextSize: integer('context_size'),
     modeId: text('mode_id'),
+    agentId: text('agent_id'),
     deletedAt: text('deleted_at'),
     userId: text('user_id'),
   },
@@ -214,6 +215,31 @@ export const modesTable = sqliteTable(
   },
   (table) => [
     index('idx_modes_active')
+      .on(table.id)
+      .where(sql`${table.deletedAt} IS NULL`),
+  ],
+)
+
+export const agentsTable = sqliteTable(
+  'agents',
+  {
+    id: text('id').primaryKey(),
+    name: text('name'),
+    type: text('type', { enum: ['built-in', 'local', 'remote'] }),
+    transport: text('transport', { enum: ['in-process', 'stdio', 'websocket'] }),
+    command: text('command'),
+    args: text('args'),
+    url: text('url'),
+    authMethod: text('auth_method'),
+    icon: text('icon'),
+    isSystem: integer('is_system').default(0),
+    enabled: integer('enabled').default(1),
+    deletedAt: text('deleted_at'),
+    userId: text('user_id'),
+    defaultHash: text('default_hash'),
+  },
+  (table) => [
+    index('idx_agents_active')
       .on(table.id)
       .where(sql`${table.deletedAt} IS NULL`),
   ],

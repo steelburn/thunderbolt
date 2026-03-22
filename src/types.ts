@@ -10,6 +10,7 @@ import type { z } from 'zod'
 import type { HttpClient } from './contexts'
 import type { AnyDrizzleDatabase } from './db/database-interface'
 import type {
+  agentsTable,
   chatMessagesTable,
   chatThreadsTable,
   mcpServersTable,
@@ -55,6 +56,7 @@ export type McpServerRow = InferSelectModel<typeof mcpServersTable>
 export type PromptRow = InferSelectModel<typeof promptsTable>
 export type TriggerRow = InferSelectModel<typeof triggersTable>
 export type ModelProfileRow = InferSelectModel<typeof modelProfilesTable>
+export type AgentRow = InferSelectModel<typeof agentsTable>
 
 // Application types - Row types with previously-required fields made non-null
 export type ChatMessage = WithRequired<ChatMessageRow, 'content' | 'role' | 'chatThreadId'>
@@ -76,6 +78,7 @@ export type McpServer = WithRequired<McpServerRow, 'name' | 'type' | 'enabled'>
 export type Prompt = WithRequired<PromptRow, 'prompt' | 'modelId'>
 export type Trigger = WithRequired<TriggerRow, 'triggerType' | 'isEnabled' | 'promptId'>
 export type ModelProfile = WithRequired<ModelProfileRow, 'modelId'>
+export type Agent = WithRequired<AgentRow, 'name' | 'type' | 'transport' | 'enabled'>
 
 /**
  * Query usable with PowerSync's toCompilableQuery and direct await.
