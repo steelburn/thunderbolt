@@ -4,7 +4,7 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import { useSyncEnabledToggle } from '@/hooks/use-sync-enabled-toggle'
 import { cn } from '@/lib/utils'
 import { Cloud, CloudOff, Loader2 } from 'lucide-react'
-import { SyncEnableWarningDialog } from '@/components/sync-enable-warning-dialog'
+import { SyncSetupModal } from '@/components/sync-setup/sync-setup-modal'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Switch } from '@/components/ui/switch'
@@ -26,7 +26,7 @@ export const PowerSyncStatus = () => {
   const { isMobile } = useIsMobile()
 
   const { connectionStatus, hasSynced, lastSyncedAt } = usePowerSyncStatus()
-  const { syncEnabled, syncEnableWarningOpen, setSyncEnableWarningOpen, handleSyncToggle, handleConfirmEnableSync } =
+  const { syncEnabled, syncSetupOpen, setSyncSetupOpen, handleSyncToggle, handleSyncSetupComplete } =
     useSyncEnabledToggle()
 
   const isConnected = connectionStatus === 'connected'
@@ -144,11 +144,7 @@ export const PowerSyncStatus = () => {
           </div>
         </PopoverContent>
       </Popover>
-      <SyncEnableWarningDialog
-        open={syncEnableWarningOpen}
-        onOpenChange={setSyncEnableWarningOpen}
-        onConfirm={handleConfirmEnableSync}
-      />
+      <SyncSetupModal open={syncSetupOpen} onOpenChange={setSyncSetupOpen} onComplete={handleSyncSetupComplete} />
     </>
   )
 }
