@@ -153,15 +153,19 @@ export const TextPart = memo(({ part, messageId, sources, haystackReferences }: 
 
     const parts = parseContentParts(part.text)
 
-    // Document search citations (Haystack references)
-    if (hasDocumentRefs) {
+    // Pick the citation builder based on which source type is active
+    const buildPlaceholders = hasDocumentRefs
+      ? (text: string, offset: number) => buildDocumentCitationPlaceholders(text, haystackReferences, offset)
+      : hasNewSources
+        ? (text: string, offset: number) => buildSourceCitationPlaceholders(text, sources, offset)
+        : null
+
+    if (buildPlaceholders) {
       let keyOffset = 0
       const mergedCitations: CitationMap = new Map()
-      const processedParts: ContentPart[] = parts.map((p) => {
-        if (p.type !== 'text') {
-          return p
-        }
-        const { fullText, citations } = buildDocumentCitationPlaceholders(p.content, haystackReferences, keyOffset)
+      const mapped: ContentPart[] = parts.map((p) => {
+        if (p.type !== 'text') return p
+        const { fullText, citations } = buildPlaceholders(p.content, keyOffset)
         for (const [key, value] of citations) {
           mergedCitations.set(key, value)
         }
@@ -170,34 +174,9 @@ export const TextPart = memo(({ part, messageId, sources, haystackReferences }: 
       })
 
       return {
-        processedParts,
+        processedParts: mapped,
         citations: mergedCitations,
         hasCitations: mergedCitations.size > 0,
-        hasText: parts.some((p) => p.type === 'text' && p.content.length > 0),
-      }
-    }
-
-    // Web source citations
-    if (hasNewSources) {
-      let keyOffset = 0
-      const mergedCitations: CitationMap = new Map()
-      const processedParts: ContentPart[] = parts.map((p) => {
-        if (p.type !== 'text') {
-          return p
-        }
-        const { fullText, citations } = buildSourceCitationPlaceholders(p.content, sources, keyOffset)
-        for (const [key, value] of citations) {
-          mergedCitations.set(key, value)
-        }
-        keyOffset += citations.size
-        return { type: 'text' as const, content: fullText }
-      })
-
-      const hasCit = mergedCitations.size > 0
-      return {
-        processedParts,
-        citations: mergedCitations,
-        hasCitations: hasCit,
         hasText: parts.some((p) => p.type === 'text' && p.content.length > 0),
       }
     }

@@ -3,7 +3,7 @@ import { useContentView } from '@/content-view/context'
 import { useSettings } from '@/hooks/use-settings'
 import { Button } from '@/components/ui/button'
 import { Download, Loader2 } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Document, Page, pdfjs } from 'react-pdf'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
@@ -37,6 +37,7 @@ export const PdfSidebarViewer = ({ fileId, fileName, initialPage }: DocumentSide
   const [numPages, setNumPages] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const blobUrlRef = useRef<string | null>(null)
 
   const fileType = getFileType(fileName)
 
@@ -56,22 +57,28 @@ export const PdfSidebarViewer = ({ fileId, fileName, initialPage }: DocumentSide
         return
       }
 
+      const url = URL.createObjectURL(blob)
+      blobUrlRef.current = url
+
       if (fileType === 'docx') {
         const mammoth = await import('mammoth')
         const arrayBuffer = await blob.arrayBuffer()
         const result = await mammoth.convertToHtml({ arrayBuffer })
         if (!cancelled) {
           setDocxHtml(result.value)
-          setBlobUrl(URL.createObjectURL(blob))
+          setBlobUrl(url)
           setLoading(false)
+        } else {
+          URL.revokeObjectURL(url)
+          blobUrlRef.current = null
         }
       } else {
-        const url = URL.createObjectURL(blob)
         if (!cancelled) {
           setBlobUrl(url)
           setLoading(false)
         } else {
           URL.revokeObjectURL(url)
+          blobUrlRef.current = null
         }
       }
     }
@@ -85,18 +92,13 @@ export const PdfSidebarViewer = ({ fileId, fileName, initialPage }: DocumentSide
 
     return () => {
       cancelled = true
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fileId, fileType])
-
-  useEffect(() => {
-    return () => {
-      if (blobUrl) {
-        URL.revokeObjectURL(blobUrl)
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current)
+        blobUrlRef.current = null
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [fileId, fileType])
 
   const handleDownload = useCallback(() => {
     if (!blobUrl) {

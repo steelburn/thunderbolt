@@ -5,10 +5,6 @@ import { eq, inArray } from 'drizzle-orm'
 import type { AnyDrizzleDatabase } from '@/db/database-interface'
 import type { Agent } from '@/types'
 
-/**
- * Check if a command exists on the system PATH using Tauri shell.
- * Returns null on web or if the command is not found.
- */
 const commandExists = async (command: string): Promise<boolean> => {
   if (!isTauri()) {
     return false
@@ -25,6 +21,42 @@ const commandExists = async (command: string): Promise<boolean> => {
 }
 
 /**
+ * Upsert agents into the DB, inserting new ones and updating changed ones.
+ * Compares by hash to avoid unnecessary writes.
+ */
+const upsertAgents = async (db: AnyDrizzleDatabase, agents: Agent[]): Promise<void> => {
+  if (agents.length === 0) return
+
+  const existingRows = await db
+    .select()
+    .from(agentsTable)
+    .where(
+      inArray(
+        agentsTable.id,
+        agents.map((a) => a.id),
+      ),
+    )
+  const existingById = new Map(existingRows.map((r) => [r.id, r]))
+
+  await Promise.all(
+    agents.map((agent) => {
+      const agentHash = hashAgent(agent)
+      const existing = existingById.get(agent.id)
+
+      if (!existing) {
+        return db.insert(agentsTable).values({ ...agent, defaultHash: agentHash })
+      }
+      if (existing.defaultHash !== agentHash) {
+        return db
+          .update(agentsTable)
+          .set({ ...agent, defaultHash: agentHash })
+          .where(eq(agentsTable.id, agent.id))
+      }
+    }),
+  )
+}
+
+/**
  * Discover local CLI agents available on this machine and upsert them into the DB.
  * Only runs on Tauri desktop — returns immediately on web/mobile.
  */
@@ -33,41 +65,11 @@ export const discoverAndSeedLocalAgents = async (db: AnyDrizzleDatabase): Promis
     return []
   }
 
-  // Check all candidates in parallel
   const candidatesWithCommand = localAgentCandidates.filter((c) => c.command)
   const existenceResults = await Promise.all(candidatesWithCommand.map((c) => commandExists(c.command!)))
 
   const discovered = candidatesWithCommand.filter((_, i) => existenceResults[i])
-  if (discovered.length === 0) {
-    return []
-  }
-
-  // Batch-fetch existing rows for all discovered agents
-  const existingRows = await db
-    .select()
-    .from(agentsTable)
-    .where(
-      inArray(
-        agentsTable.id,
-        discovered.map((c) => c.id),
-      ),
-    )
-  const existingById = new Map(existingRows.map((r) => [r.id, r]))
-
-  for (const candidate of discovered) {
-    const candidateHash = hashAgent(candidate)
-    const existing = existingById.get(candidate.id)
-
-    if (!existing) {
-      await db.insert(agentsTable).values({ ...candidate, defaultHash: candidateHash })
-    } else if (existing.defaultHash !== candidateHash) {
-      await db
-        .update(agentsTable)
-        .set({ ...candidate, defaultHash: candidateHash })
-        .where(eq(agentsTable.id, candidate.id))
-    }
-  }
-
+  await upsertAgents(db, discovered)
   return discovered
 }
 
@@ -101,36 +103,8 @@ export const discoverAndSeedRemoteHaystackAgents = async (
     return []
   }
 
-  // Convert HTTP URL to WebSocket URL
   const wsBaseUrl = cloudUrl.replace(/^http/, 'ws')
-
   const agents = pipelines.map((p) => haystackAgentFromPipeline(p, wsBaseUrl))
-
-  // Batch-fetch existing rows
-  const existingRows = await db
-    .select()
-    .from(agentsTable)
-    .where(
-      inArray(
-        agentsTable.id,
-        agents.map((a) => a.id),
-      ),
-    )
-  const existingById = new Map(existingRows.map((r) => [r.id, r]))
-
-  for (const agent of agents) {
-    const agentHash = hashAgent(agent)
-    const existing = existingById.get(agent.id)
-
-    if (!existing) {
-      await db.insert(agentsTable).values({ ...agent, defaultHash: agentHash })
-    } else if (existing.defaultHash !== agentHash) {
-      await db
-        .update(agentsTable)
-        .set({ ...agent, defaultHash: agentHash })
-        .where(eq(agentsTable.id, agent.id))
-    }
-  }
-
+  await upsertAgents(db, agents)
   return agents
 }
