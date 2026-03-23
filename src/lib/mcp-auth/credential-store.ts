@@ -78,17 +78,19 @@ const decrypt = async (key: CryptoKey, encryptedJson: string): Promise<string> =
  * Falls back to a static identifier in non-Tauri environments (tests).
  */
 const getDeviceId = async (): Promise<string> => {
-  try {
-    const { readTextFile, writeTextFile, BaseDirectory } = await import('@tauri-apps/plugin-fs')
-    try {
-      return await readTextFile('mcp-device-id', { baseDir: BaseDirectory.AppData })
-    } catch {
-      const id = crypto.randomUUID()
-      await writeTextFile('mcp-device-id', id, { baseDir: BaseDirectory.AppData })
-      return id
-    }
-  } catch {
+  // Dynamic import fails outside Tauri (tests, web) — fall back to static identifier
+  const fs = await import('@tauri-apps/plugin-fs').catch(() => null)
+  if (!fs) {
     return 'thunderbolt-local'
+  }
+
+  try {
+    return await fs.readTextFile('mcp-device-id', { baseDir: fs.BaseDirectory.AppData })
+  } catch {
+    // File doesn't exist yet — generate and persist a new device ID
+    const id = crypto.randomUUID()
+    await fs.writeTextFile('mcp-device-id', id, { baseDir: fs.BaseDirectory.AppData })
+    return id
   }
 }
 
