@@ -241,9 +241,57 @@ Thunderbolt is moving from a passphrase-based encryption model (PR #465) to a pe
 
 ---
 
-## PR 5: FE — Integration (API client + wiring + schema update + all flows)
+## PR 5: FE — Encryption infrastructure (cherry-picked from PR #465)
 
-**Goal:** Wire crypto module + API + UI together. Update FE device schema. Implement Flows C through I from the user flows doc.
+**Branch:** `raivieiraadriano92/thu-285-part5`
+
+**Goal:** Add the config-driven encryption abstraction layer that powers upload encoding, shadow-table decryption, and DAL integration. Cherry-picked from PR #465 and adapted for the new architecture.
+
+### What it provides
+
+**`src/db/encryption/`** — Encryption infrastructure module
+- **`config.ts`** — Single source of truth: maps every synced table to its encrypted columns. Adding an entry here auto-generates shadow tables, watcher triggers, upload encoding, and DAL helpers.
+- **`codec.ts`** — Pluggable encode/decode codec (currently base64 PoC, replaced with AES-GCM in PR 6).
+- **`enabled.ts`** — Global runtime toggle (`isEncryptionEnabled()` / `setEncryptionEnabled()`).
+- **`shadow-tables.ts`** — Auto-generates local-only `*_decrypted` shadow tables from the config.
+- **`watcher.ts`** — PowerSync trigger-based decryption watchers. On INSERT/UPDATE, decodes encrypted columns into the shadow table. On DELETE, removes shadow row.
+- **`upload-encoder.ts`** — Encodes encrypted columns in CRUD operations before upload to backend.
+- **`dal-helpers.ts`** — `decryptedCol()`, `decryptedJoin()`, `decryptedSelectFor()` — COALESCE-based SQL helpers that prefer decoded shadow values, falling back to encoded source.
+
+**`src/lib/base64.ts`** — Prefix-based base64 encoding/decoding utilities.
+
+### DAL updates (all modules)
+All DAL modules updated to use `decryptedSelectFor()` / `decryptedJoin()` / `decryptedCol()` so queries read from shadow tables when encryption is enabled, falling back transparently when disabled.
+
+### PowerSync integration
+- `src/db/powersync/schema.ts` — Registers shadow tables in the PowerSync schema.
+- `src/db/powersync/connector.ts` — Calls `encodeForUpload()` on CRUD operations before sending to backend.
+- `src/db/powersync/database.ts` — Sets up decryption watchers on connect.
+
+### Files changed
+- `src/db/encryption/` — 7 new files (config, codec, enabled, shadow-tables, watcher, upload-encoder, dal-helpers, index)
+- `src/lib/base64.ts` — new file
+- `src/lib/reconcile-defaults.ts` — updated to decode encrypted defaults
+- `src/dal/*.ts` — all 11 DAL modules updated for decrypted queries
+- `src/db/powersync/schema.ts` — shadow table registration
+- `src/db/powersync/connector.ts` — upload encoding
+- `src/db/powersync/database.ts` — watcher setup
+- `src/db/apply-schema.ts` — shadow table creation
+
+### Verification
+- `bun run typecheck` passes
+- Encryption disabled by default — existing behavior unchanged
+- When enabled: uploads are encoded, shadow tables decode on sync, DAL reads prefer decoded values
+
+---
+
+## PR 6: FE — Integration (API client + wiring + schema update + all flows)
+
+**Goal:** Wire crypto module + API + UI together. Update FE device schema. Replace base64 PoC codec with real AES-GCM. Implement Flows C through I from the user flows doc.
+
+### Replace PoC codec with real AES-GCM
+- `src/db/encryption/codec.ts` — Replace base64 encode/decode with async AES-GCM encrypt/decrypt using CK from IndexedDB (PR 4's `src/crypto/` module)
+- Watcher and upload encoder may need async adaptation
 
 ### Update FE device schema
 - `src/db/tables.ts` — add `status` and `publicKey` columns to devicesTable
@@ -271,7 +319,7 @@ Thunderbolt is moving from a passphrase-based encryption model (PR #465) to a pe
 
 ### Wire UI to service layer
 - Replace all mock/stub calls in sync-setup components with real service calls
-- Remove test-only "Choose flow" first step from wizard (replace with real server detection)
+- Remove test-only detecting step from wizard (replace with real server detection via POST /devices)
 - Update `use-sync-setup.ts` hook to use real crypto + API
 - Update devices settings to use real `status` field from synced table (replace mock pending approvals with real data)
 - Wire `approveDevice()` / `revokeDevice()` to real service calls
@@ -281,24 +329,18 @@ Thunderbolt is moving from a passphrase-based encryption model (PR #465) to a pe
 - React to `APPROVAL_PENDING` devices appearing in sync (badge on Settings)
 - React to own device status changing to `REVOKED` (disconnect + clear)
 - Update connector to handle 403 responses with new status model
-
-### Upload/download encryption
-- Integrate `encrypt()`/`decrypt()` into PowerSync upload/download codec
-- Ensure records are encrypted before upload and decrypted after download
+- Enable encryption after first device setup / device approval
 
 ### Files to modify
+- `src/db/encryption/codec.ts` — replace base64 with AES-GCM
 - `src/db/tables.ts` — add status + publicKey columns
-- `src/db/powersync/connector.ts` — encryption codec integration
+- `src/db/powersync/connector.ts` — async codec integration
 - `src/dal/devices.ts` — update types + add helpers
 - `src/hooks/use-sync-enabled-toggle.ts` — trigger setup flow
 - `src/hooks/use-sync-setup.ts` — replace stubs with real calls
 - `src/settings/preferences.tsx` — wire to new setup
 - `src/settings/devices.tsx` — replace mocks with real synced data + service calls
 - All sync-setup components — replace mocks with real calls
-
-### Reusable from #465
-- Upload encoder/codec pattern (adapt for new CK-based encryption)
-- Watcher integration pattern
 
 ### Verification
 - Full E2E flow testing:
@@ -322,10 +364,13 @@ PR 2 (backend schema) — deploy + run migration
   ↓
 PR 3 (backend API) + PR 4 (FE crypto) — can develop & merge in parallel
   ↓
-PR 5 (FE integration) — requires all previous PRs merged
+PR 5 (FE encryption infra) — requires PR 4 merged
+  ↓
+PR 6 (FE integration) — requires all previous PRs merged
 ```
 
 - **PR 1** lands first with zero risk — pure UI, no schema/crypto/API dependencies
 - **PR 2** deploys backend schema changes
 - **PRs 3 & 4** have no code dependency on each other — develop and review in parallel
-- **PR 5** ties everything together: updates FE schema, replaces mocks with real calls, wires crypto + API + UI
+- **PR 5** adds the encryption infrastructure layer (config, shadow tables, watchers, upload encoding, DAL helpers) with a base64 PoC codec
+- **PR 6** ties everything together: replaces PoC codec with AES-GCM, updates FE schema, replaces mocks with real calls, wires crypto + API + UI
