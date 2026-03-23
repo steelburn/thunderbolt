@@ -108,6 +108,7 @@ export const useHydrateChatStore = ({ id, isNew }: UseHydrateChatStoreParams) =>
   const navigate = useNavigate()
 
   const [isReady, setIsReady] = useState(false)
+  const [connectingAgentName, setConnectingAgentName] = useState<string | null>(null)
 
   const { getEnabledClients } = useMCP()
 
@@ -218,6 +219,11 @@ export const useHydrateChatStore = ({ id, isNew }: UseHydrateChatStoreParams) =>
 
     const initialUIMessages = initialMessages.map(convertDbChatMessageToUIMessage) as ThunderboltUIMessage[]
 
+    // Show connecting indicator for non-built-in agents (built-in is instant)
+    if (selectedAgent.type !== 'built-in') {
+      setConnectingAgentName(selectedAgent.name)
+    }
+
     // Create ACP session for this chat
     const { acpClient, sessionState } = await createAcpSession({
       chatId: id,
@@ -267,5 +273,5 @@ export const useHydrateChatStore = ({ id, isNew }: UseHydrateChatStoreParams) =>
     setIsReady(true)
   }
 
-  return { hydrateChatStore, isReady, saveMessages }
+  return { hydrateChatStore, isReady, connectingAgentName, saveMessages }
 }
