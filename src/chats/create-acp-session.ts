@@ -165,7 +165,7 @@ export const ensureAcpConnection = async (sessionId: string): Promise<AcpClient>
   return connectPromise
 }
 
-const localAgentTimeoutMs = 15_000
+const localAgentTimeoutMs = 10_000
 
 /**
  * Create an ACP session for a local CLI agent (stdio transport).

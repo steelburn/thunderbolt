@@ -7,7 +7,7 @@ import { isMobile as isPlatformMobile } from '@/lib/platform'
 import { trackEvent as trackEvent_default } from '@/lib/posthog'
 import { type Model, type SaveMessagesFunction } from '@/types'
 import { useDraftInput } from '@/hooks/use-draft-input'
-import { Loader2 } from 'lucide-react'
+import { AlertCircle, Loader2 } from 'lucide-react'
 import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useNavigate as useNavigate_default } from 'react-router'
 import { ContextOverflowModal } from '../context-overflow-modal'
@@ -51,6 +51,7 @@ export const ChatPromptInput = forwardRef<ChatPromptInputRef, ChatPromptInputPro
       selectedModel,
       messages,
       status,
+      error,
       availableModes,
       configOptions,
       isAgentAvailable,
@@ -77,6 +78,7 @@ export const ChatPromptInput = forwardRef<ChatPromptInputRef, ChatPromptInputPro
 
     const isStreaming = status === 'streaming'
     const isConnecting = status === 'connecting'
+    const isConnectionError = status === 'error' && modes.length === 0 && error != null
 
     // isMobile = viewport is narrow (responsive breakpoint, e.g. desktop browser resized small)
     // isPlatformMobile() = native platform is iOS/Android (Tauri mobile app)
@@ -208,6 +210,11 @@ export const ChatPromptInput = forwardRef<ChatPromptInputRef, ChatPromptInputPro
           <div className="flex items-center gap-2 px-3 h-[var(--touch-height-sm)] text-muted-foreground text-[length:var(--font-size-body)]">
             <Loader2 className="size-[var(--icon-size-default)] shrink-0 animate-spin" />
             <span>Connecting to {agentConfig.name}...</span>
+          </div>
+        ) : isConnectionError ? (
+          <div className="flex items-center gap-2 px-3 h-[var(--touch-height-sm)] text-destructive text-[length:var(--font-size-body)]">
+            <AlertCircle className="size-[var(--icon-size-default)] shrink-0" />
+            <span>Failed to connect to {agentConfig.name}</span>
           </div>
         ) : (
           modes.length > 0 && <ModeSelector modes={modes} selectedMode={selectedMode} onModeChange={handleModeChange} />

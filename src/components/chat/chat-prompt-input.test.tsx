@@ -526,5 +526,100 @@ describe('ChatPromptInput', () => {
       expect(screen.getByText('Connecting to Remote Agent...')).toBeInTheDocument()
       expect(screen.getByPlaceholderText('Ask me anything...')).toBeInTheDocument()
     })
+
+    it('shows error message when connection fails', () => {
+      hydrateStore({
+        chatThread: createMockChatThread(),
+        id: 'thread-1',
+        mcpClients: [],
+        selectedModel: createMockModel(),
+        triggerData: null,
+        agentConfig: createMockLocalAgent(),
+        isAgentAvailable: true,
+        status: 'error',
+        error: new Error('Agent did not respond within 15s'),
+        availableModes: [],
+      })
+
+      render(
+        <ChatPromptInput useIsMobile={createMockUseIsMobile()} useContextTracking={createMockUseContextTracking()} />,
+        { wrapper: TestWrapper },
+      )
+
+      expect(screen.getByText('Failed to connect to Claude Code')).toBeInTheDocument()
+      // Textarea should still be visible so user can retry
+      expect(screen.getByPlaceholderText('Ask me anything...')).toBeInTheDocument()
+      // No connecting spinner
+      expect(screen.queryByText(/Connecting to/)).toBeNull()
+    })
+
+    it('transitions from connecting to error on failure', () => {
+      hydrateStore({
+        chatThread: createMockChatThread(),
+        id: 'thread-1',
+        mcpClients: [],
+        selectedModel: createMockModel(),
+        triggerData: null,
+        agentConfig: createMockLocalAgent(),
+        isAgentAvailable: true,
+        status: 'connecting',
+        availableModes: [],
+      })
+
+      render(
+        <ChatPromptInput useIsMobile={createMockUseIsMobile()} useContextTracking={createMockUseContextTracking()} />,
+        { wrapper: TestWrapper },
+      )
+
+      // Initially shows connecting
+      expect(screen.getByText('Connecting to Claude Code...')).toBeInTheDocument()
+
+      // Simulate connection failure
+      act(() => {
+        useChatStore.getState().setSessionStatus('thread-1', 'error', new Error('Connection timeout'))
+      })
+
+      // Error message should replace connecting spinner
+      expect(screen.getByText('Failed to connect to Claude Code')).toBeInTheDocument()
+      expect(screen.queryByText(/Connecting to/)).toBeNull()
+      expect(screen.getByPlaceholderText('Ask me anything...')).toBeInTheDocument()
+    })
+
+    it('does not show error when modes are already loaded', () => {
+      // If the agent was previously connected (has modes) but then errors on a reconnect,
+      // keep showing the mode selector instead of the error message
+      const modes: SessionMode[] = [{ id: 'code', name: 'Code' }]
+      hydrateStore({
+        chatThread: createMockChatThread(),
+        id: 'thread-1',
+        mcpClients: [],
+        selectedModel: createMockModel(),
+        triggerData: null,
+        agentConfig: createMockLocalAgent(),
+        isAgentAvailable: true,
+        status: 'error',
+        error: new Error('Reconnect failed'),
+        availableModes: modes,
+        currentModeId: 'code',
+        selectedMode: {
+          id: 'code',
+          name: 'code',
+          label: 'Code',
+          icon: 'terminal',
+          systemPrompt: null,
+          isDefault: 0,
+          order: 0,
+        } as never,
+      })
+
+      render(
+        <ChatPromptInput useIsMobile={createMockUseIsMobile()} useContextTracking={createMockUseContextTracking()} />,
+        { wrapper: TestWrapper },
+      )
+
+      // Mode selector should be shown, not the error
+      expect(screen.getByText('Code')).toBeInTheDocument()
+      expect(screen.queryByText(/Failed to connect/)).toBeNull()
+    })
   })
 })
