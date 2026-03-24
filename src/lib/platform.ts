@@ -57,6 +57,52 @@ export const isMobile = (): boolean => {
   return currentPlatform === 'ios' || currentPlatform === 'android'
 }
 
+export type WebOsPlatform = 'macos' | 'windows' | 'linux' | 'ios' | 'android' | 'unknown'
+
+/**
+ * Detects the user's OS when running in a web browser via navigator.userAgent.
+ * @returns The web OS platform, or 'unknown' when running in Tauri or when the UA cannot be parsed.
+ */
+export const getWebOsPlatform = (): WebOsPlatform => {
+  if (isTauri() || typeof navigator === 'undefined') {
+    return 'unknown'
+  }
+  const ua = navigator.userAgent
+  // Check mobile platforms first — their UAs also contain desktop OS strings
+  if (/iPhone|iPad/.test(ua)) {
+    return 'ios'
+  }
+  if (/Android/.test(ua)) {
+    return 'android'
+  }
+  if (/Mac/.test(ua)) {
+    // iPadOS 13+ reports a desktop "Macintosh" UA — distinguish via touch support
+    if (navigator.maxTouchPoints > 0) {
+      return 'ios'
+    }
+    return 'macos'
+  }
+  if (/Win/.test(ua)) {
+    return 'windows'
+  }
+  if (/Linux/.test(ua)) {
+    return 'linux'
+  }
+  return 'unknown'
+}
+
+/** Returns true when the web browser is running on a mobile OS (iOS or Android). */
+export const isWebMobilePlatform = (): boolean => {
+  const p = getWebOsPlatform()
+  return p === 'ios' || p === 'android'
+}
+
+/** Returns true when the web browser is running on a desktop OS (macOS, Windows, Linux). */
+export const isWebDesktopPlatform = (): boolean => {
+  const p = getWebOsPlatform()
+  return p === 'macos' || p === 'windows' || p === 'linux'
+}
+
 type WebBrowser = 'safari' | 'chrome' | 'firefox' | 'edge' | 'unknown'
 
 /**
@@ -197,18 +243,6 @@ export const getDeviceDisplayName = (): string => {
   }
   const browser = getWebBrowser()
   const browserDisplay = browser === 'unknown' ? 'Browser' : browser.charAt(0).toUpperCase() + browser.slice(1)
-  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : ''
-  let os = 'Unknown'
-  if (ua.includes('Mac')) {
-    os = platformDisplayNames.macos
-  } else if (ua.includes('Win')) {
-    os = platformDisplayNames.windows
-  } else if (ua.includes('Linux')) {
-    os = platformDisplayNames.linux
-  } else if (ua.includes('iPhone') || ua.includes('iPad')) {
-    os = platformDisplayNames.ios
-  } else if (ua.includes('Android')) {
-    os = platformDisplayNames.android
-  }
+  const os = formatPlatformName(getWebOsPlatform())
   return `${browserDisplay} on ${os}`
 }

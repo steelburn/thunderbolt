@@ -1,4 +1,4 @@
-import { ChevronsUpDown, Loader2, LogOut, Terminal, UserRound } from 'lucide-react'
+import { ChevronsUpDown, Loader2, LogOut, Terminal, UserRound, Download } from 'lucide-react'
 import { type ReactNode, useState } from 'react'
 
 import { LogoutModal } from '@/components/logout-modal'
@@ -14,8 +14,14 @@ import {
 } from '@/components/ui/sidebar'
 import { useAuth, useSignInModal } from '@/contexts'
 import { useSettings } from '@/hooks/use-settings'
+import { getDownloadUrl } from '@/lib/download-links'
+import { isWebDesktopPlatform, isTauri } from '@/lib/platform'
 import { edgeSpacing, mobileSidebarWidthRatio } from '@/lib/constants'
 import { cn } from '@/lib/utils'
+
+const showAppDownloads = import.meta.env.VITE_SHOW_APP_DOWNLOADS === 'true'
+
+const openLink = (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
 
 type SidebarFooterProps = {
   className?: string
@@ -72,6 +78,8 @@ export const SidebarFooter = ({ className }: SidebarFooterProps) => {
   // On mobile, always treat the sidebar as expanded when it's open
   const isExpanded = isMobile || state === 'expanded'
   const isDesktopCollapsed = !isMobile && state === 'collapsed'
+
+  const showDownloadAppButton = showAppDownloads && !isTauri() && isWebDesktopPlatform()
 
   const handleSignInClick = () => {
     // Close mobile sidebar first so modal is visible
@@ -219,6 +227,20 @@ export const SidebarFooter = ({ className }: SidebarFooterProps) => {
               <span className="truncate text-xs text-muted-foreground">{displayEmail}</span>
             </div>
           </div>
+
+          {showDownloadAppButton && (
+            <>
+              <div className="h-px bg-border" />
+
+              <div className="flex flex-col gap-1 px-2">
+                <AccountMenuItemButton
+                  icon={<Download className={iconSize} />}
+                  label="Download App"
+                  onClick={() => openLink(getDownloadUrl())}
+                />
+              </div>
+            </>
+          )}
 
           {import.meta.env.DEV && (
             <>
