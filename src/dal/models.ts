@@ -1,7 +1,7 @@
 import { and, desc, eq, isNotNull, isNull, or, sql } from 'drizzle-orm'
 import type { AnyDrizzleDatabase } from '../db/database-interface'
 import { modelsTable, settingsTable } from '../db/tables'
-import { getShadowTable, decryptedJoin, decryptedSelectFor } from '../db/encryption'
+import { getShadowTable, decryptedCol, decryptedJoin, decryptedSelectFor } from '../db/encryption'
 import { clearNullableColumns, nowIso } from '../lib/utils'
 import type { DrizzleQueryWithPromise, Model } from '@/types'
 import { getLastMessage } from './chat-messages'
@@ -9,6 +9,8 @@ import { createDefaultModelProfile, deleteModelProfileForModel } from './model-p
 
 const modelsShadow = getShadowTable('models')
 const modelsSelect = decryptedSelectFor('models')
+const settingsShadow = getShadowTable('settings')
+const decryptedSettingsValue = decryptedCol(settingsShadow, settingsTable, 'value')
 
 /**
  * Gets all models from the database (excluding soft-deleted)
@@ -60,12 +62,15 @@ export const getSelectedModelQuery = (db: AnyDrizzleDatabase) => {
     .select(modelsSelect)
     .from(modelsTable)
     .leftJoin(modelsShadow, decryptedJoin(modelsTable, modelsShadow))
-    .leftJoin(
-      settingsTable,
-      and(eq(settingsTable.key, 'selected_model'), eq(settingsTable.value, modelsTable.id), eq(modelsTable.enabled, 1)),
+    .leftJoin(settingsTable, and(eq(settingsTable.key, 'selected_model'), eq(modelsTable.enabled, 1)))
+    .leftJoin(settingsShadow, decryptedJoin(settingsTable, settingsShadow))
+    .where(
+      and(
+        isNull(modelsTable.deletedAt),
+        or(eq(modelsTable.isSystem, 1), sql`${decryptedSettingsValue} = ${modelsTable.id}`),
+      ),
     )
-    .where(and(isNull(modelsTable.deletedAt), or(eq(modelsTable.isSystem, 1), isNotNull(settingsTable.value))))
-    .orderBy(sql`CASE WHEN ${settingsTable.value} IS NOT NULL THEN 0 ELSE 1 END`, modelsTable.name)
+    .orderBy(sql`CASE WHEN ${decryptedSettingsValue} IS NOT NULL THEN 0 ELSE 1 END`, modelsTable.name)
     .limit(1)
 
   return query as typeof query & DrizzleQueryWithPromise<Model>
