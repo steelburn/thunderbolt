@@ -1,4 +1,4 @@
-import { and, desc, eq, isNotNull, isNull, or, sql } from 'drizzle-orm'
+import { and, desc, eq, isNull, or, sql } from 'drizzle-orm'
 import type { AnyDrizzleDatabase } from '../db/database-interface'
 import { modelsTable, settingsTable } from '../db/tables'
 import { getShadowTable, decryptedCol, decryptedJoin, decryptedSelectFor } from '../db/encryption'
