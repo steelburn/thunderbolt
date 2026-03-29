@@ -1,8 +1,8 @@
 import { sql } from 'drizzle-orm'
 import type { AnyDrizzleDatabase } from '@/db/database-interface'
-import type { ColumnInfo, DbObject, DbObjectType, QueryResult, SqliteExplorerAdapter } from './types'
+import type { ColumnInfo, DbObject, QueryResult, SqliteExplorerAdapter } from './types'
 
-const TEMP_VIEW_NAME = '__db_explorer_temp'
+const tempViewName = '__db_explorer_temp'
 
 /** Escape a SQLite identifier (table/view name) */
 const escapeId = (name: string): string => `"${name.replace(/"/g, '""')}"`
@@ -18,8 +18,12 @@ const isSelectStatement = (query: string): boolean => {
  * PowerSync returns objects, wa-sqlite returns arrays.
  */
 const readRow = (row: unknown, index: number, key: string): unknown => {
-  if (Array.isArray(row)) return row[index]
-  if (row && typeof row === 'object') return (row as Record<string, unknown>)[key]
+  if (Array.isArray(row)) {
+    return row[index]
+  }
+  if (row && typeof row === 'object') {
+    return (row as Record<string, unknown>)[key]
+  }
   return undefined
 }
 
@@ -27,8 +31,12 @@ const readRow = (row: unknown, index: number, key: string): unknown => {
  * Convert a row (object or array) to a positional array using the given column keys.
  */
 const rowToArray = (row: unknown, keys: string[]): unknown[] => {
-  if (Array.isArray(row)) return row
-  if (row && typeof row === 'object') return keys.map((k) => (row as Record<string, unknown>)[k])
+  if (Array.isArray(row)) {
+    return row
+  }
+  if (row && typeof row === 'object') {
+    return keys.map((k) => (row as Record<string, unknown>)[k])
+  }
   return []
 }
 
@@ -50,14 +58,14 @@ const parsePragmaRow = (row: unknown): ColumnInfo => ({
  */
 const getColumnsFromQuery = async (db: AnyDrizzleDatabase, query: string): Promise<string[]> => {
   try {
-    await db.run(sql.raw(`DROP VIEW IF EXISTS ${escapeId(TEMP_VIEW_NAME)}`))
-    await db.run(sql.raw(`CREATE TEMP VIEW ${escapeId(TEMP_VIEW_NAME)} AS ${query}`))
-    const pragmaRows = await db.all(sql.raw(`PRAGMA table_info(${escapeId(TEMP_VIEW_NAME)})`))
-    await db.run(sql.raw(`DROP VIEW IF EXISTS ${escapeId(TEMP_VIEW_NAME)}`))
+    await db.run(sql.raw(`DROP VIEW IF EXISTS ${escapeId(tempViewName)}`))
+    await db.run(sql.raw(`CREATE TEMP VIEW ${escapeId(tempViewName)} AS ${query}`))
+    const pragmaRows = await db.all(sql.raw(`PRAGMA table_info(${escapeId(tempViewName)})`))
+    await db.run(sql.raw(`DROP VIEW IF EXISTS ${escapeId(tempViewName)}`))
     return pragmaRows.map((row) => String(readRow(row, 1, 'name')))
   } catch {
     try {
-      await db.run(sql.raw(`DROP VIEW IF EXISTS ${escapeId(TEMP_VIEW_NAME)}`))
+      await db.run(sql.raw(`DROP VIEW IF EXISTS ${escapeId(tempViewName)}`))
     } catch {
       // Ignore cleanup errors
     }
@@ -108,8 +116,12 @@ export const createDrizzleExplorerAdapter = (db: AnyDrizzleDatabase): SqliteExpl
       columns.length > 0
         ? rawRows.map((row) => rowToArray(row, columns))
         : rawRows.map((row) => {
-            if (Array.isArray(row)) return row
-            if (row && typeof row === 'object') return Object.values(row as Record<string, unknown>)
+            if (Array.isArray(row)) {
+              return row
+            }
+            if (row && typeof row === 'object') {
+              return Object.values(row as Record<string, unknown>)
+            }
             return [row]
           })
 

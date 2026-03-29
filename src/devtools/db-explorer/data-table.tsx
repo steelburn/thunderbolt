@@ -16,11 +16,15 @@ type DataTableProps = {
   onPageSizeChange: (size: number) => void
 }
 
-const PAGE_SIZES = [25, 50, 100, 200]
+const pageSizes = [25, 50, 100, 200]
 
 const formatCellValue = (value: unknown): string => {
-  if (value === null || value === undefined) return 'NULL'
-  if (typeof value === 'object') return JSON.stringify(value)
+  if (value === null || value === undefined) {
+    return 'NULL'
+  }
+  if (typeof value === 'object') {
+    return JSON.stringify(value)
+  }
   return String(value)
 }
 
@@ -150,7 +154,7 @@ export const DataTable = ({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {PAGE_SIZES.map((size) => (
+              {pageSizes.map((size) => (
                 <SelectItem key={size} value={String(size)}>
                   {size} rows
                 </SelectItem>

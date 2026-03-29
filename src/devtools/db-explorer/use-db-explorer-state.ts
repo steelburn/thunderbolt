@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useReducer } from 'react'
 import type { DbExplorerAction, DbExplorerState, SqliteExplorerAdapter } from './types'
 
-const DEFAULT_PAGE_SIZE = 50
+const defaultPageSize = 50
 
 const initialState: DbExplorerState = {
   objects: [],
@@ -14,7 +14,7 @@ const initialState: DbExplorerState = {
   isLoading: false,
   error: null,
   page: 0,
-  pageSize: DEFAULT_PAGE_SIZE,
+  pageSize: defaultPageSize,
   totalRows: 0,
   queryTimeMs: null,
 }
@@ -74,7 +74,6 @@ export const useDbExplorerState = (adapter: SqliteExplorerAdapter) => {
     const load = async () => {
       try {
         const objects = await adapter.getObjects()
-        console.log('[db-explorer] loaded objects:', objects)
         dispatch({ type: 'SET_OBJECTS', objects })
       } catch (err) {
         console.error('[db-explorer] failed to load objects:', err)
@@ -106,7 +105,7 @@ export const useDbExplorerState = (adapter: SqliteExplorerAdapter) => {
         const start = performance.now()
 
         const [result, totalRows] = await Promise.all([
-          adapter.execute(`SELECT * FROM "${name}" LIMIT ${DEFAULT_PAGE_SIZE} OFFSET 0`),
+          adapter.execute(`SELECT * FROM "${name}" LIMIT ${defaultPageSize} OFFSET 0`),
           adapter.getRowCount(name),
         ])
 
@@ -144,7 +143,9 @@ export const useDbExplorerState = (adapter: SqliteExplorerAdapter) => {
 
   const fetchPage = useCallback(
     async (page: number) => {
-      if (!state.selectedObject) return
+      if (!state.selectedObject) {
+        return
+      }
       dispatch({ type: 'SET_PAGE', page })
       dispatch({ type: 'SET_LOADING', loading: true })
 

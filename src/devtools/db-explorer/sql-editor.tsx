@@ -37,7 +37,9 @@ export const SqlEditor = ({ value, onChange, onRun, isLoading, error, queryTimeM
   onRunRef.current = onRun
 
   useEffect(() => {
-    if (!editorRef.current) return
+    if (!editorRef.current) {
+      return
+    }
 
     const runKeymap = keymap.of([
       {
@@ -84,7 +86,9 @@ export const SqlEditor = ({ value, onChange, onRun, isLoading, error, queryTimeM
   // Sync external value changes into the editor
   useEffect(() => {
     const view = viewRef.current
-    if (!view) return
+    if (!view) {
+      return
+    }
     const currentDoc = view.state.doc.toString()
     if (currentDoc !== value) {
       view.dispatch({

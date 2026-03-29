@@ -3,14 +3,14 @@ import { ChevronRight, Eye, List, Table2, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { DbObject, DbObjectType, SqliteExplorerAdapter } from './types'
 
-const OBJECT_TYPE_CONFIG: Record<DbObjectType, { label: string; icon: typeof Table2 }> = {
+const objectTypeConfig: Record<DbObjectType, { label: string; icon: typeof Table2 }> = {
   table: { label: 'Tables', icon: Table2 },
   view: { label: 'Views', icon: Eye },
   index: { label: 'Indexes', icon: List },
   trigger: { label: 'Triggers', icon: Zap },
 }
 
-const GROUP_ORDER: DbObjectType[] = ['table', 'view', 'index', 'trigger']
+const groupOrder: DbObjectType[] = ['table', 'view', 'index', 'trigger']
 
 type ObjectListProps = {
   adapter: SqliteExplorerAdapter
@@ -36,7 +36,9 @@ export const ObjectList = ({ adapter, objects, selectedObject, onSelect }: Objec
       }
       setRowCounts(counts)
     }
-    if (objects.length > 0) loadCounts()
+    if (objects.length > 0) {
+      loadCounts()
+    }
   }, [adapter, objects])
 
   const toggleGroup = useCallback((type: DbObjectType) => {
@@ -51,11 +53,13 @@ export const ObjectList = ({ adapter, objects, selectedObject, onSelect }: Objec
     })
   }, [])
 
-  const grouped = GROUP_ORDER.map((type) => ({
-    type,
-    ...OBJECT_TYPE_CONFIG[type],
-    items: objects.filter((o) => o.type === type),
-  })).filter((g) => g.items.length > 0)
+  const grouped = groupOrder
+    .map((type) => ({
+      type,
+      ...objectTypeConfig[type],
+      items: objects.filter((o) => o.type === type),
+    }))
+    .filter((g) => g.items.length > 0)
 
   return (
     <div className="flex h-full flex-col overflow-y-auto">

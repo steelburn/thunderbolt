@@ -23,7 +23,9 @@ export const SqlDefinition = ({ value }: SqlDefinitionProps) => {
   const isDark = useIsDarkMode()
 
   useEffect(() => {
-    if (!editorRef.current) return
+    if (!editorRef.current) {
+      return
+    }
 
     const state = EditorState.create({
       doc: value,

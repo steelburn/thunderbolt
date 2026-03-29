@@ -1,24 +1,26 @@
-import { useCallback, useRef, useState } from 'react'
+import { type MouseEvent as ReactMouseEvent, useCallback, useRef, useState } from 'react'
 
-const MIN_COLUMN_WIDTH = 60
-const DEFAULT_COLUMN_WIDTH = 150
+const minColumnWidth = 60
+const defaultColumnWidth = 150
 
 export const useColumnResize = (columnCount: number) => {
   const [columnWidths, setColumnWidths] = useState<Map<number, number>>(new Map())
   const dragState = useRef<{ columnIndex: number; startX: number; startWidth: number } | null>(null)
 
-  const getColumnWidth = useCallback((index: number) => columnWidths.get(index) ?? DEFAULT_COLUMN_WIDTH, [columnWidths])
+  const getColumnWidth = useCallback((index: number) => columnWidths.get(index) ?? defaultColumnWidth, [columnWidths])
 
   const onMouseDown = useCallback(
-    (e: React.MouseEvent, columnIndex: number) => {
+    (e: ReactMouseEvent, columnIndex: number) => {
       e.preventDefault()
-      const startWidth = columnWidths.get(columnIndex) ?? DEFAULT_COLUMN_WIDTH
+      const startWidth = columnWidths.get(columnIndex) ?? defaultColumnWidth
       dragState.current = { columnIndex, startX: e.clientX, startWidth }
 
       const onMouseMove = (moveEvent: MouseEvent) => {
-        if (!dragState.current) return
+        if (!dragState.current) {
+          return
+        }
         const delta = moveEvent.clientX - dragState.current.startX
-        const newWidth = Math.max(MIN_COLUMN_WIDTH, dragState.current.startWidth + delta)
+        const newWidth = Math.max(minColumnWidth, dragState.current.startWidth + delta)
         setColumnWidths((prev) => new Map(prev).set(dragState.current!.columnIndex, newWidth))
       }
 
