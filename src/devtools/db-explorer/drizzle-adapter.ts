@@ -71,11 +71,13 @@ const getColumnsFromQuery = async (db: AnyDrizzleDatabase, query: string): Promi
  */
 export const createDrizzleExplorerAdapter = (db: AnyDrizzleDatabase): SqliteExplorerAdapter => ({
   async getObjects(): Promise<DbObject[]> {
-    const rows = await db.all(sql.raw(`SELECT name, type FROM sqlite_master ORDER BY type, name`))
+    const rows = await db.all(sql.raw(`SELECT name, type, sql, tbl_name FROM sqlite_master ORDER BY type, name`))
 
     return rows.map((row) => ({
       name: String(readRow(row, 0, 'name')),
       type: String(readRow(row, 1, 'type')) as DbObject['type'],
+      sqlDefinition: readRow(row, 2, 'sql') != null ? String(readRow(row, 2, 'sql')) : null,
+      tblName: readRow(row, 3, 'tbl_name') != null ? String(readRow(row, 3, 'tbl_name')) : null,
     }))
   },
 

@@ -5,6 +5,10 @@ export type DbObjectType = 'table' | 'view' | 'index' | 'trigger'
 export type DbObject = {
   name: string
   type: DbObjectType
+  /** The CREATE statement from sqlite_master */
+  sqlDefinition: string | null
+  /** The table this object belongs to (for indexes and triggers) */
+  tblName: string | null
 }
 
 export type ColumnInfo = {

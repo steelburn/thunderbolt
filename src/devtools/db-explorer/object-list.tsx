@@ -68,7 +68,10 @@ export const ObjectList = ({ adapter, objects, selectedObject, onSelect }: Objec
                 )}
               >
                 <Icon className="text-muted-foreground size-3.5 shrink-0" />
-                <span className="min-w-0 truncate">{obj.name}</span>
+                <div className="flex min-w-0 flex-col">
+                  <span className="truncate">{obj.name}</span>
+                  {obj.tblName && <span className="text-muted-foreground truncate text-xs">on {obj.tblName}</span>}
+                </div>
                 {count != null && count >= 0 && (
                   <span className="text-muted-foreground ml-auto shrink-0 text-xs">{count}</span>
                 )}

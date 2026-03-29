@@ -26,7 +26,6 @@ const reducer = (state: DbExplorerState, action: DbExplorerAction): DbExplorerSt
         ...state,
         selectedObject: action.name,
         columns: action.columns,
-        customSql: `SELECT * FROM "${action.name}"`,
         page: 0,
         queryResult: null,
         error: null,
@@ -74,11 +73,53 @@ export const useDbExplorerState = (adapter: SqliteExplorerAdapter) => {
 
   const selectObject = useCallback(
     async (name: string) => {
+      const obj = state.objects.find((o) => o.name === name)
+      const objectType = obj?.type ?? 'table'
+
       try {
+        if (objectType === 'index') {
+          // For indexes: show PRAGMA index_info and the CREATE statement
+          const pragmaQuery = `PRAGMA index_info("${name}")`
+          dispatch({ type: 'SELECT_OBJECT', name, columns: [] })
+          dispatch({
+            type: 'SET_CUSTOM_SQL',
+            sql: obj?.sqlDefinition ? `-- ${obj.sqlDefinition}\n\n${pragmaQuery}` : pragmaQuery,
+          })
+          dispatch({ type: 'SET_LOADING', loading: true })
+          const start = performance.now()
+          const result = await adapter.execute(pragmaQuery)
+          dispatch({
+            type: 'SET_QUERY_RESULT',
+            result,
+            totalRows: result.rows.length,
+            queryTimeMs: performance.now() - start,
+          })
+          return
+        }
+
+        if (objectType === 'trigger') {
+          // For triggers: show the CREATE TRIGGER SQL definition
+          const definition = obj?.sqlDefinition ?? 'No SQL definition available'
+          const infoQuery = `SELECT sql FROM sqlite_master WHERE type = 'trigger' AND name = '${name.replace(/'/g, "''")}'`
+          dispatch({ type: 'SELECT_OBJECT', name, columns: [] })
+          dispatch({ type: 'SET_CUSTOM_SQL', sql: `-- Trigger definition:\n-- ${definition}` })
+          dispatch({ type: 'SET_LOADING', loading: true })
+          const start = performance.now()
+          const result = await adapter.execute(infoQuery)
+          dispatch({
+            type: 'SET_QUERY_RESULT',
+            result,
+            totalRows: result.rows.length,
+            queryTimeMs: performance.now() - start,
+          })
+          return
+        }
+
+        // Tables and views: fetch columns + paginated data
         const columns = await adapter.getColumns(name)
         dispatch({ type: 'SELECT_OBJECT', name, columns })
+        dispatch({ type: 'SET_CUSTOM_SQL', sql: `SELECT * FROM "${name}"` })
 
-        // Fetch first page of data
         dispatch({ type: 'SET_LOADING', loading: true })
         const start = performance.now()
 
@@ -97,7 +138,7 @@ export const useDbExplorerState = (adapter: SqliteExplorerAdapter) => {
         dispatch({ type: 'SET_ERROR', error: String(err) })
       }
     },
-    [adapter],
+    [adapter, state.objects],
   )
 
   const runQuery = useCallback(
