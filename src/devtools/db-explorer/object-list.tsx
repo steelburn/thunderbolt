@@ -1,7 +1,16 @@
 import { useEffect, useState } from 'react'
-import { Eye, Table2 } from 'lucide-react'
+import { Eye, List, Table2, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { DbObject, SqliteExplorerAdapter } from './types'
+import type { DbObject, DbObjectType, SqliteExplorerAdapter } from './types'
+
+const OBJECT_TYPE_CONFIG: Record<DbObjectType, { label: string; icon: typeof Table2 }> = {
+  table: { label: 'Tables', icon: Table2 },
+  view: { label: 'Views', icon: Eye },
+  index: { label: 'Indexes', icon: List },
+  trigger: { label: 'Triggers', icon: Zap },
+}
+
+const GROUP_ORDER: DbObjectType[] = ['table', 'view', 'index', 'trigger']
 
 type ObjectListProps = {
   adapter: SqliteExplorerAdapter
@@ -16,7 +25,8 @@ export const ObjectList = ({ adapter, objects, selectedObject, onSelect }: Objec
   useEffect(() => {
     const loadCounts = async () => {
       const counts = new Map<string, number>()
-      for (const obj of objects) {
+      const countable = objects.filter((o) => o.type === 'table' || o.type === 'view')
+      for (const obj of countable) {
         try {
           counts.set(obj.name, await adapter.getRowCount(obj.name))
         } catch {
@@ -28,71 +38,46 @@ export const ObjectList = ({ adapter, objects, selectedObject, onSelect }: Objec
     if (objects.length > 0) loadCounts()
   }, [adapter, objects])
 
-  const tables = objects.filter((o) => o.type === 'table')
-  const views = objects.filter((o) => o.type === 'view')
+  const grouped = GROUP_ORDER.map((type) => ({
+    type,
+    ...OBJECT_TYPE_CONFIG[type],
+    items: objects.filter((o) => o.type === type),
+  })).filter((g) => g.items.length > 0)
 
   return (
     <div className="flex h-full flex-col overflow-y-auto">
-      {tables.length > 0 && (
-        <ObjectGroup
-          label="Tables"
-          objects={tables}
-          selectedObject={selectedObject}
-          rowCounts={rowCounts}
-          onSelect={onSelect}
-        />
-      )}
-      {views.length > 0 && (
-        <ObjectGroup
-          label="Views"
-          objects={views}
-          selectedObject={selectedObject}
-          rowCounts={rowCounts}
-          onSelect={onSelect}
-        />
-      )}
-      {objects.length === 0 && <div className="text-muted-foreground p-4 text-sm">No tables or views found</div>}
+      {grouped.map((group) => (
+        <div key={group.type} className="flex flex-col">
+          <div className="text-muted-foreground px-3 py-2 text-xs font-semibold uppercase tracking-wider">
+            {group.label}
+          </div>
+          {group.items.map((obj) => {
+            const count = rowCounts.get(obj.name)
+            const isSelected = obj.name === selectedObject
+            const Icon = group.icon
+
+            return (
+              <button
+                key={obj.name}
+                type="button"
+                onClick={() => onSelect(obj.name)}
+                className={cn(
+                  'flex items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors',
+                  'hover:bg-muted/50',
+                  isSelected && 'bg-muted font-medium',
+                )}
+              >
+                <Icon className="text-muted-foreground size-3.5 shrink-0" />
+                <span className="min-w-0 truncate">{obj.name}</span>
+                {count != null && count >= 0 && (
+                  <span className="text-muted-foreground ml-auto shrink-0 text-xs">{count}</span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      ))}
+      {objects.length === 0 && <div className="text-muted-foreground p-4 text-sm">No database objects found</div>}
     </div>
   )
 }
-
-type ObjectGroupProps = {
-  label: string
-  objects: DbObject[]
-  selectedObject: string | null
-  rowCounts: Map<string, number>
-  onSelect: (name: string) => void
-}
-
-const ObjectGroup = ({ label, objects, selectedObject, rowCounts, onSelect }: ObjectGroupProps) => (
-  <div className="flex flex-col">
-    <div className="text-muted-foreground px-3 py-2 text-xs font-semibold uppercase tracking-wider">{label}</div>
-    {objects.map((obj) => {
-      const count = rowCounts.get(obj.name)
-      const isSelected = obj.name === selectedObject
-
-      return (
-        <button
-          key={obj.name}
-          type="button"
-          onClick={() => onSelect(obj.name)}
-          className={cn(
-            'flex items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors',
-            'hover:bg-muted/50',
-            isSelected && 'bg-muted font-medium',
-          )}
-        >
-          {obj.type === 'table' ? (
-            <Table2 className="text-muted-foreground size-3.5 shrink-0" />
-          ) : (
-            <Eye className="text-muted-foreground size-3.5 shrink-0" />
-          )}
-          <span className="min-w-0 truncate">{obj.name}</span>
-          {count != null && count >= 0 && (
-            <span className="text-muted-foreground ml-auto shrink-0 text-xs">{count}</span>
-          )}
-        </button>
-      )
-    })}
-  </div>
-)

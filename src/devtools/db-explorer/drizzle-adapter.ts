@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm'
 import type { AnyDrizzleDatabase } from '@/db/database-interface'
-import type { ColumnInfo, DbObject, QueryResult, SqliteExplorerAdapter } from './types'
+import type { ColumnInfo, DbObject, DbObjectType, QueryResult, SqliteExplorerAdapter } from './types'
 
 const TEMP_VIEW_NAME = '__db_explorer_temp'
 
@@ -71,13 +71,11 @@ const getColumnsFromQuery = async (db: AnyDrizzleDatabase, query: string): Promi
  */
 export const createDrizzleExplorerAdapter = (db: AnyDrizzleDatabase): SqliteExplorerAdapter => ({
   async getObjects(): Promise<DbObject[]> {
-    const rows = await db.all(
-      sql.raw(`SELECT name, type FROM sqlite_master WHERE type IN ('table', 'view') ORDER BY type, name`),
-    )
+    const rows = await db.all(sql.raw(`SELECT name, type FROM sqlite_master ORDER BY type, name`))
 
     return rows.map((row) => ({
       name: String(readRow(row, 0, 'name')),
-      type: String(readRow(row, 1, 'type')) as 'table' | 'view',
+      type: String(readRow(row, 1, 'type')) as DbObject['type'],
     }))
   },
 

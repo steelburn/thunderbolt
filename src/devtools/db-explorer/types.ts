@@ -1,8 +1,10 @@
 // ---- Adapter interface (DB-agnostic) ----
 
+export type DbObjectType = 'table' | 'view' | 'index' | 'trigger'
+
 export type DbObject = {
   name: string
-  type: 'table' | 'view'
+  type: DbObjectType
 }
 
 export type ColumnInfo = {
