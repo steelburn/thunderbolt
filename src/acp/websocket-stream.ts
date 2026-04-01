@@ -76,7 +76,9 @@ export const connectWithReconnect = ({ onConnect, onGiveUp, createWebSocket }: R
 
   return {
     cancel: () => {
-      if (retryTimeout) clearTimeout(retryTimeout)
+      if (retryTimeout) {
+        clearTimeout(retryTimeout)
+      }
     },
   }
 }
