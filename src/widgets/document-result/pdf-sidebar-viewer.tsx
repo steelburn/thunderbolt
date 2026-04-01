@@ -97,8 +97,7 @@ export const PdfSidebarViewer = ({ fileId, fileName, initialPage }: DocumentSide
         blobUrlRef.current = null
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fileId, fileType])
+  }, [fileId, fileType, cloudUrl.value])
 
   const handleDownload = useCallback(() => {
     if (!blobUrl) {
