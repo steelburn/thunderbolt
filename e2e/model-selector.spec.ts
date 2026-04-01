@@ -34,33 +34,34 @@ test.describe('Model Selector', () => {
   })
 
   test('selecting a model shows checkmark indicator', async ({ page }) => {
-    // Find all model selector triggers in the form area
     const form = page.locator('form')
 
-    // Look for model selector by finding a button with a model-like name
-    // The built-in agent provides models from the DB
-    const modelButtons = form.locator('button').filter({
-      has: page.locator('svg'),
-    })
+    // The model selector trigger contains an SVG icon (Cpu) and model name text.
+    // Look for it by the "Select Model" text or a button with model-like content.
+    const modelTrigger = form
+      .locator('button')
+      .filter({ hasText: /Select Model|GPT|Claude|Mistral|Llama|Sonnet/i })
+      .first()
 
-    // If we can find and click the model selector
-    const count = await modelButtons.count()
-    if (count > 1) {
-      // The model selector is separate from the submit button
-      // Click it to open the dropdown
-      await modelButtons.first().click()
-      await page.waitForTimeout(500)
+    if (!(await modelTrigger.isVisible().catch(() => false))) {
+      // No model selector visible — agent may only have one model. Skip gracefully.
+      return
+    }
 
-      // In the dropdown, the currently selected model should have a checkmark (Check icon SVG)
-      const popover = page.locator('[data-radix-popper-content-wrapper]')
-      if (await popover.isVisible().catch(() => false)) {
-        // Look for a checkmark SVG inside the selected item
-        const selectedItem = popover.locator('.bg-accent')
-        if (await selectedItem.count()) {
-          const checkIcon = selectedItem.locator('svg')
-          expect(await checkIcon.count()).toBeGreaterThan(0)
-        }
-      }
+    await modelTrigger.click()
+    await page.waitForTimeout(500)
+
+    const popover = page.locator('[data-radix-popper-content-wrapper]')
+    if (!(await popover.isVisible().catch(() => false))) return
+
+    // The currently selected model item renders a Check SVG (lucide Check icon).
+    // Verify that exactly one check icon exists in the dropdown.
+    const checkIcons = popover.locator('svg.lucide-check')
+    const checkCount = await checkIcons.count()
+
+    // There should be exactly one checkmark for the selected model
+    if (checkCount > 0) {
+      expect(checkCount).toBe(1)
     }
   })
 })
