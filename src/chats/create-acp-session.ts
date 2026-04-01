@@ -33,7 +33,7 @@ type AcpSessionResult = {
 
 /** Safely parse a JSON string, returning a fallback on malformed data. */
 const safeParseArgs = (args: string | null): string[] | undefined => {
-  if (!args) return undefined
+  if (!args) { return undefined }
   try {
     return JSON.parse(args)
   } catch {
