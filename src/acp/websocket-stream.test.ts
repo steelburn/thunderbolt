@@ -178,7 +178,6 @@ describe('connectWithReconnect', () => {
     const createWebSocket = mock(() => createMockWebSocket())
     const onGiveUp = mock(() => {})
 
-    const ws = createWebSocket.mock.results[0]?.value ?? createMockWebSocket()
     connectWithReconnect({
       onConnect: () => {},
       onGiveUp,
