@@ -198,8 +198,8 @@ test.describe('Chat Navigation', () => {
     await page.locator('form button[type="submit"]').click()
     await page.waitForURL(/\/chats\/(?!new)/, { timeout: 10000 })
 
-    // Click New Chat in sidebar
-    await page.getByText('New Chat').click()
+    // Click New Chat button in sidebar (first match is the nav button, not the chat list item)
+    await page.getByText('New Chat').first().click()
 
     // New chat should fully render — catches blank screen regression
     await expect(page.locator('textarea')).toBeVisible({ timeout: 15000 })
