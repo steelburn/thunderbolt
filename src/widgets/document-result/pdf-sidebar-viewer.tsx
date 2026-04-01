@@ -30,13 +30,19 @@ type ViewerState =
 
 type ViewerAction =
   | { type: 'loaded'; blobUrl: string | null; docxHtml: string | null; numPages: number | null }
+  | { type: 'set_pages'; numPages: number }
   | { type: 'error'; message: string }
   | { type: 'reset' }
 
-const viewerReducer = (_state: ViewerState, action: ViewerAction): ViewerState => {
+const viewerReducer = (state: ViewerState, action: ViewerAction): ViewerState => {
   switch (action.type) {
     case 'loaded':
       return { status: 'loaded', blobUrl: action.blobUrl, docxHtml: action.docxHtml, numPages: action.numPages }
+    case 'set_pages':
+      if (state.status !== 'loaded') {
+        return state
+      }
+      return { ...state, numPages: action.numPages }
     case 'error':
       return { status: 'error', message: action.message }
     case 'reset':
@@ -127,14 +133,9 @@ export const PdfSidebarViewer = ({ fileId, fileName, initialPage }: DocumentSide
     document.body.removeChild(a)
   }, [blobUrl, fileName])
 
-  const onDocumentLoadSuccess = useCallback(
-    ({ numPages: pages }: { numPages: number }) => {
-      if (state.status === 'loaded') {
-        dispatch({ type: 'loaded', blobUrl: state.blobUrl, docxHtml: state.docxHtml, numPages: pages })
-      }
-    },
-    [state],
-  )
+  const onDocumentLoadSuccess = useCallback(({ numPages: pages }: { numPages: number }) => {
+    dispatch({ type: 'set_pages', numPages: pages })
+  }, [])
 
   const numPages = state.status === 'loaded' ? state.numPages : null
 
