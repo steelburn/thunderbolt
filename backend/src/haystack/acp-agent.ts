@@ -72,6 +72,7 @@ export const createHaystackAcpAgent = ({ client, pipelineConfig }: HaystackAcpAg
       }
 
       const ac = new AbortController()
+      session.abortController?.abort()
       session.abortController = ac
 
       const text = params.prompt
