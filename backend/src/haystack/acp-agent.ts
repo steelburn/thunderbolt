@@ -135,8 +135,8 @@ const handleChatStream = async (
     throw new Error('Haystack streaming response has no body')
   }
 
-  let references: HaystackReferenceMeta[] = []
-  let documents: HaystackDocumentMeta[] = []
+  const accumulatedReferences: HaystackReferenceMeta[] = []
+  const accumulatedDocuments: HaystackDocumentMeta[] = []
 
   for await (const event of parseSSE(sseResponse.body)) {
     if (ac.signal.aborted) {
@@ -154,8 +154,10 @@ const handleChatStream = async (
     }
 
     if (event.type === 'result') {
-      references = extractReferences(event.result)
-      documents = extractDocuments(event.result)
+      const references = extractReferences(event.result)
+      const documents = extractDocuments(event.result)
+      accumulatedReferences.push(...references)
+      accumulatedDocuments.push(...documents)
 
       if (references.length > 0) {
         await conn.sessionUpdate({
@@ -174,7 +176,7 @@ const handleChatStream = async (
     }
   }
 
-  return { references, documents }
+  return { references: accumulatedReferences, documents: accumulatedDocuments }
 }
 
 /** Handle DOCUMENT-type pipelines via the /search endpoint. */
