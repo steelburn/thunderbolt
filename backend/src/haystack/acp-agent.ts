@@ -194,10 +194,11 @@ const handleDocumentSearch = async (
     return { references: [], documents }
   }
 
-  const references: HaystackReferenceMeta[] = documents.map((d, i) => ({
+  const references: HaystackReferenceMeta[] = result.documents.map((d, i) => ({
     position: i + 1,
     fileId: d.file.id,
     fileName: d.file.name,
+    pageNumber: d.meta?.page_number,
   }))
 
   await conn.sessionUpdate({
