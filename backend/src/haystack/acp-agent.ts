@@ -36,6 +36,7 @@ type SessionState = {
  * restore sessions across reconnects.
  */
 const defaultPersistentSessions = new Map<string, string>()
+const maxPersistentSessions = 1000
 
 /**
  * Create an ACP Agent handler that wraps a Deepset/Haystack pipeline.
@@ -76,6 +77,10 @@ export const createHaystackAcpAgent = ({
       const { searchSessionId } = await client.createSession()
       const sessionId = crypto.randomUUID()
       sessions.set(sessionId, { haystackSessionId: searchSessionId, abortController: null })
+      if (persistentSessions.size >= maxPersistentSessions) {
+        const oldestKey = persistentSessions.keys().next().value
+        if (oldestKey) persistentSessions.delete(oldestKey)
+      }
       persistentSessions.set(sessionId, searchSessionId)
 
       return {
