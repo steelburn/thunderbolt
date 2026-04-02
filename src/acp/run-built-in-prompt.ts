@@ -346,7 +346,10 @@ export const runBuiltInPrompt = async ({
     }
 
     if (abortSignal.aborted) {
-      return { stopReason: 'cancelled' as const }
+      return {
+        stopReason: 'cancelled' as const,
+        _meta: sourceCollector.length > 0 ? { sources: sourceCollector } : undefined,
+      }
     }
 
     // Check for empty response retry
@@ -374,5 +377,8 @@ export const runBuiltInPrompt = async ({
     break
   }
 
-  return { stopReason: 'end_turn' as const }
+  return {
+    stopReason: 'end_turn' as const,
+    _meta: sourceCollector.length > 0 ? { sources: sourceCollector } : undefined,
+  }
 }

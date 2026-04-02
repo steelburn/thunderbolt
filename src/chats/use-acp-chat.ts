@@ -1,6 +1,12 @@
-import { createMessageAccumulator, parseMeta, type MessageAccumulator, type SessionUpdate } from '@/acp/message-accumulator'
+import {
+  createMessageAccumulator,
+  parseMeta,
+  type MessageAccumulator,
+  type SessionUpdate,
+} from '@/acp/message-accumulator'
 import { trackEvent } from '@/lib/posthog'
 import type { SaveMessagesFunction, ThunderboltUIMessage } from '@/types'
+import type { SourceMetadata } from '@/types/source'
 import { v7 as uuidv7 } from 'uuid'
 import { useChatStore } from './chat-store'
 import { ensureAcpConnection } from './create-acp-session'
@@ -61,6 +67,11 @@ export const sendAcpPrompt = async ({ sessionId, text, metadata, saveMessages }:
       }
       if (meta?.haystackReferences) {
         accumulator.setHaystackReferences(meta.haystackReferences)
+      }
+
+      const rawSources = (result._meta as Record<string, unknown>)?.sources
+      if (Array.isArray(rawSources)) {
+        accumulator.setSources(rawSources as SourceMetadata[])
       }
     }
 

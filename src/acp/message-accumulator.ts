@@ -1,5 +1,6 @@
 import type { SessionNotification } from '@agentclientprotocol/sdk'
 import type { HaystackDocumentMeta, HaystackReferenceMeta, ThunderboltUIMessage, UIMessageMetadata } from '@/types'
+import type { SourceMetadata } from '@/types/source'
 import type { ToolUIPart } from 'ai'
 import { v7 as uuidv7 } from 'uuid'
 import { z } from 'zod'
@@ -59,6 +60,7 @@ export const createMessageAccumulator = (messageId?: string) => {
 
   let haystackReferences: HaystackReferenceMeta[] | undefined
   let haystackDocuments: HaystackDocumentMeta[] | undefined
+  let sources: SourceMetadata[] | undefined
 
   const buildMessage = (): ThunderboltUIMessage => {
     const parts: ThunderboltUIMessage['parts'] = []
@@ -113,6 +115,9 @@ export const createMessageAccumulator = (messageId?: string) => {
     }
     if (haystackDocuments) {
       metadata.haystackDocuments = haystackDocuments
+    }
+    if (sources && sources.length > 0) {
+      metadata.sources = sources
     }
 
     const message: ThunderboltUIMessage = {
@@ -193,6 +198,9 @@ export const createMessageAccumulator = (messageId?: string) => {
     },
     setHaystackReferences(refs: HaystackReferenceMeta[]) {
       haystackReferences = refs
+    },
+    setSources(s: SourceMetadata[]) {
+      sources = s
     },
     get id() {
       return id
