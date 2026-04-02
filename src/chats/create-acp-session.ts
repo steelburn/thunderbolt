@@ -32,7 +32,9 @@ type AcpSessionResult = {
 
 /** Safely parse a JSON string, returning a fallback on malformed data. */
 const safeParseArgs = (args: string | null): string[] | undefined => {
-  if (!args) { return undefined }
+  if (!args) {
+    return undefined
+  }
   try {
     return JSON.parse(args)
   } catch {
@@ -122,7 +124,13 @@ export const createAcpSession = async ({
     },
     runPrompt: async ({ sessionId, modelId, modeId, conn, abortSignal }) => {
       const session = useChatStore.getState().sessions.get(chatId)
-      const currentMessages = session?.messages ?? []
+      const allMessages = session?.messages ?? []
+      // Filter out the trailing empty assistant placeholder (used for UI loading state)
+      // to prevent sending it to the LLM — some providers (e.g., Mistral) reject empty assistant messages
+      const currentMessages =
+        allMessages.at(-1)?.role === 'assistant' && !allMessages.at(-1)?.parts.some((p) => p.type === 'text' && p.text)
+          ? allMessages.slice(0, -1)
+          : allMessages
       const mode = modes.find((m) => m.id === modeId)
 
       return runBuiltInPrompt({
