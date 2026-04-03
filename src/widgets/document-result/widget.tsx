@@ -1,5 +1,5 @@
 import { useContentView } from '@/content-view/context'
-import { File, FileText, FileType2 } from 'lucide-react'
+import { File, FileType2 } from 'lucide-react'
 import { useCallback } from 'react'
 
 type DocumentResultWidgetProps = {
@@ -11,12 +11,7 @@ type DocumentResultWidgetProps = {
 
 const getFileIcon = (fileName: string) => {
   const ext = fileName.split('.').pop()?.toLowerCase()
-  if (ext === 'pdf') {
-    return FileType2
-  }
-  if (ext === 'docx' || ext === 'doc') {
-    return FileText
-  }
+  if (ext === 'pdf') return FileType2
   return File
 }
 

@@ -10,26 +10,21 @@ import 'react-pdf/dist/Page/TextLayer.css'
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString()
 
-type FileType = 'pdf' | 'docx' | 'unsupported'
+type FileType = 'pdf' | 'unsupported'
 
 const getFileType = (fileName: string): FileType => {
   const ext = fileName.split('.').pop()?.toLowerCase()
-  if (ext === 'pdf') {
-    return 'pdf'
-  }
-  if (ext === 'docx') {
-    return 'docx'
-  }
+  if (ext === 'pdf') return 'pdf'
   return 'unsupported'
 }
 
 type ViewerState =
   | { status: 'loading' }
-  | { status: 'loaded'; blobUrl: string | null; docxHtml: string | null; numPages: number | null }
+  | { status: 'loaded'; blobUrl: string | null; numPages: number | null }
   | { status: 'error'; message: string }
 
 type ViewerAction =
-  | { type: 'loaded'; blobUrl: string | null; docxHtml: string | null; numPages: number | null }
+  | { type: 'loaded'; blobUrl: string | null; numPages: number | null }
   | { type: 'set_pages'; numPages: number }
   | { type: 'error'; message: string }
   | { type: 'reset' }
@@ -37,7 +32,7 @@ type ViewerAction =
 const viewerReducer = (state: ViewerState, action: ViewerAction): ViewerState => {
   switch (action.type) {
     case 'loaded':
-      return { status: 'loaded', blobUrl: action.blobUrl, docxHtml: action.docxHtml, numPages: action.numPages }
+      return { status: 'loaded', blobUrl: action.blobUrl, numPages: action.numPages }
     case 'set_pages':
       if (state.status !== 'loaded') {
         return state
@@ -84,23 +79,11 @@ export const PdfSidebarViewer = ({ fileId, fileName, initialPage }: DocumentSide
       const url = URL.createObjectURL(blob)
       blobUrlRef.current = url
 
-      if (fileType === 'docx') {
-        const mammoth = await import('mammoth')
-        const arrayBuffer = await blob.arrayBuffer()
-        const result = await mammoth.convertToHtml({ arrayBuffer })
-        if (!cancelled) {
-          dispatch({ type: 'loaded', blobUrl: url, docxHtml: result.value, numPages: null })
-        } else {
-          URL.revokeObjectURL(url)
-          blobUrlRef.current = null
-        }
+      if (!cancelled) {
+        dispatch({ type: 'loaded', blobUrl: url, numPages: null })
       } else {
-        if (!cancelled) {
-          dispatch({ type: 'loaded', blobUrl: url, docxHtml: null, numPages: null })
-        } else {
-          URL.revokeObjectURL(url)
-          blobUrlRef.current = null
-        }
+        URL.revokeObjectURL(url)
+        blobUrlRef.current = null
       }
     }
 
@@ -182,14 +165,6 @@ export const PdfSidebarViewer = ({ fileId, fileName, initialPage }: DocumentSide
                   </div>
                 ))}
             </Document>
-          )}
-
-          {fileType === 'docx' && state.docxHtml && (
-            <iframe
-              className="prose prose-sm dark:prose-invert max-w-none w-full h-full border-0"
-              sandbox=""
-              srcDoc={state.docxHtml}
-            />
           )}
 
           {fileType === 'unsupported' && (
