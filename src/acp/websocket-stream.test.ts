@@ -193,6 +193,25 @@ describe('connectWithReconnect', () => {
     expect(onGiveUp).not.toHaveBeenCalled()
   })
 
+  test('does not reconnect on auth failure close (code 4001)', () => {
+    const createWebSocket = mock(() => createMockWebSocket())
+    const onGiveUp = mock(() => {})
+
+    connectWithReconnect({
+      onConnect: () => {},
+      onGiveUp,
+      createWebSocket,
+    })
+
+    const firstWs = createWebSocket.mock.results[0]?.value as MockWebSocket
+    firstWs._trigger('close', { code: 4001 })
+
+    getClock().tick(10000)
+
+    expect(createWebSocket).toHaveBeenCalledTimes(1)
+    expect(onGiveUp).not.toHaveBeenCalled()
+  })
+
   test('reconnects with exponential backoff on unexpected close', () => {
     const sockets: MockWebSocket[] = []
     const createWebSocket = mock(() => {

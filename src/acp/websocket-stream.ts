@@ -64,7 +64,8 @@ export const connectWithReconnect = ({
     })
 
     ws.addEventListener('close', (event) => {
-      if (event.code === 1000) {
+      const code = event.code
+      if (code === 1000 || code === 4001) {
         return
       }
       if (retries >= maxRetries) {
