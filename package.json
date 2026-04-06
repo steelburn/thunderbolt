@@ -1,7 +1,7 @@
 {
   "name": "thunderbolt",
   "private": true,
-  "version": "0.1.80",
+  "version": "0.2.0",
   "description": "Thunderbolt",
   "type": "module",
   "license": "MPL-2.0",
@@ -20,7 +20,6 @@
     "tauri:dev:desktop": "tauri dev --config src-tauri/tauri.dev.conf.json",
     "tauri:dev:android": "tauri android dev --config src-tauri/tauri.dev.conf.json",
     "tauri:dev:ios": "tauri ios dev --config src-tauri/tauri.dev.conf.json",
-
     "analyze": "vite analyze",
     "db": "drizzle-kit",
     "eval": "bun run src/ai/eval/run.ts",
@@ -123,7 +122,6 @@
     "@emotion/is-prop-valid": "^1.4.0",
     "@eslint/js": "^9.33.0",
     "@happy-dom/global-registrator": "^20.0.8",
-
     "@playwright/test": "^1.58.2",
     "@sinonjs/fake-timers": "^15.0.0",
     "@size-limit/file": "^12.0.1",
