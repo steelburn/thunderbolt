@@ -83,14 +83,14 @@ const decrypt = async (key: CryptoKey, encryptedJson: string): Promise<string> =
 }
 
 /** Promise-based singleton prevents concurrent PBKDF2 derivations */
-let keyPromise: Promise<CryptoKey> | null = null
+const keyCache = { promise: null as Promise<CryptoKey> | null }
 
 const getEncryptionKey = (): Promise<CryptoKey> => {
-  keyPromise ??= deriveKey(getDeviceId()).catch((err) => {
-    keyPromise = null
+  keyCache.promise ??= deriveKey(getDeviceId()).catch((err) => {
+    keyCache.promise = null
     throw err
   })
-  return keyPromise
+  return keyCache.promise
 }
 
 /**
@@ -107,9 +107,11 @@ const createCredentialStore = (db: AnyDrizzleDatabase): CredentialStore => {
   const save = async (serverId: string, credential: McpCredential): Promise<void> => {
     const key = await getEncryptionKey()
     const encryptedCredential = await encrypt(key, JSON.stringify(credential))
-    // Delete-then-insert pattern — PowerSync's view-based tables don't support onConflictDoUpdate
-    await db.delete(mcpCredentialsTable).where(eq(mcpCredentialsTable.id, serverId))
-    await db.insert(mcpCredentialsTable).values({ id: serverId, encryptedCredential })
+    // Delete-then-insert in a transaction to prevent data loss if interrupted
+    await db.transaction(async (tx) => {
+      await tx.delete(mcpCredentialsTable).where(eq(mcpCredentialsTable.id, serverId))
+      await tx.insert(mcpCredentialsTable).values({ id: serverId, encryptedCredential })
+    })
   }
 
   const load = async (serverId: string): Promise<McpCredential | null> => {
@@ -143,5 +145,5 @@ const createCredentialStore = (db: AnyDrizzleDatabase): CredentialStore => {
 export { createCredentialStore }
 /** Exported for testing only — resets the in-memory key cache */
 export const resetKeyCache = () => {
-  keyPromise = null
+  keyCache.promise = null
 }

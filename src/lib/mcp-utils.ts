@@ -12,8 +12,12 @@ const platformTransports: Record<PlatformCategory, McpTransportType[]> = {
 
 /** Returns the platform category for transport filtering */
 const getPlatformCategory = (): PlatformCategory => {
-  if (isDesktop()) {return 'desktop'}
-  if (isMobile()) {return 'mobile'}
+  if (isDesktop()) {
+    return 'desktop'
+  }
+  if (isMobile()) {
+    return 'mobile'
+  }
   return 'web'
 }
 
@@ -43,7 +47,9 @@ export const validateMcpUrl = (url: string): URL => {
  * Rejects shell meta-characters.
  */
 export const validateStdioCommand = (command: string): void => {
-  if (!command.trim()) {throw new Error('Command is required')}
+  if (!command.trim()) {
+    throw new Error('Command is required')
+  }
   if (!/^[a-zA-Z0-9._/-]+$/.test(command)) {
     throw new Error('Command contains invalid characters')
   }
@@ -72,7 +78,10 @@ export const validateMcpServerUrl = (url: string): { valid: boolean; error?: str
       return { valid: false, error: 'URL must use http: or https: protocol' }
     }
     if (parsed.protocol === 'http:' && !isLocalMcpServer(url)) {
-      return { valid: false, error: 'Plain HTTP is only supported for localhost servers. Use HTTPS for remote servers.' }
+      return {
+        valid: false,
+        error: 'Plain HTTP is only supported for localhost servers. Use HTTPS for remote servers.',
+      }
     }
     return { valid: true }
   } catch {
@@ -84,7 +93,7 @@ export const validateMcpServerUrl = (url: string): { valid: boolean; error?: str
 export const isLocalMcpServer = (url: string): boolean => {
   try {
     const hostname = new URL(url).hostname.toLowerCase()
-    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '0.0.0.0'
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1'
   } catch {
     return false
   }
