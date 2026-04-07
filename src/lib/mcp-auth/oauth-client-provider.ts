@@ -176,35 +176,39 @@ class McpOAuthClientProvider implements OAuthClientProvider {
   private waitForLoopbackCode = async (): Promise<string> => {
     const { listen } = await import('@tauri-apps/api/event')
 
-    return new Promise<string>((resolve, reject) => {
-      let unlisten: (() => void) | null = null
-
-      const timeoutId = setTimeout(
-        () => {
-          unlisten?.()
-          reject(new Error('OAuth authorization timed out'))
-        },
-        5 * 60 * 1000,
-      )
-
-      listen<{ url: string }>('oauth-callback', (event) => {
-        clearTimeout(timeoutId)
-        unlisten?.()
-        const callbackUrl = new URL(event.payload.url)
-        const code = callbackUrl.searchParams.get('code')
-        const error = callbackUrl.searchParams.get('error')
-
-        if (error) {
-          reject(new Error(callbackUrl.searchParams.get('error_description') || error))
-        } else if (code) {
-          resolve(code)
-        } else {
-          reject(new Error('No authorization code in callback'))
-        }
-      }).then((fn) => {
-        unlisten = fn
-      })
+    let resolvePromise: (code: string) => void
+    let rejectPromise: (err: Error) => void
+    const promise = new Promise<string>((resolve, reject) => {
+      resolvePromise = resolve
+      rejectPromise = reject
     })
+
+    // Await listen() so unlisten is guaranteed available before any event or timeout fires
+    const unlisten = await listen<{ url: string }>('oauth-callback', (event) => {
+      clearTimeout(timeoutId)
+      unlisten()
+      const callbackUrl = new URL(event.payload.url)
+      const code = callbackUrl.searchParams.get('code')
+      const error = callbackUrl.searchParams.get('error')
+
+      if (error) {
+        rejectPromise(new Error(callbackUrl.searchParams.get('error_description') || error))
+      } else if (code) {
+        resolvePromise(code)
+      } else {
+        rejectPromise(new Error('No authorization code in callback'))
+      }
+    })
+
+    const timeoutId = setTimeout(
+      () => {
+        unlisten()
+        rejectPromise(new Error('OAuth authorization timed out'))
+      },
+      5 * 60 * 1000,
+    )
+
+    return promise
   }
 }
 

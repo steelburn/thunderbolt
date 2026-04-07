@@ -51,7 +51,11 @@ export const useMcpOAuthCallback = () => {
 
   useEffect(() => {
     const mcpOauth = (location.state as { mcpOauth?: McpOAuthCallbackData } | null)?.mcpOauth
-    if (!mcpOauth) {return}
+    if (!mcpOauth) {
+      return
+    }
+
+    let cancelled = false
 
     const handleCallback = async () => {
       setIsProcessingOAuth(true)
@@ -66,21 +70,21 @@ export const useMcpOAuthCallback = () => {
           throw new Error('No authorization code received')
         }
 
-        // Read persisted OAuth state from settings
         const oauthState = await getMcpOAuthState()
         if (!oauthState.serverId || !oauthState.serverUrl || !oauthState.codeVerifier) {
           throw new Error('OAuth state not found — the authorization flow may have expired')
         }
 
-        // Verify state nonce to prevent CSRF
         if (!oauthState.stateNonce || mcpOauth.state !== oauthState.stateNonce) {
           throw new Error('OAuth state mismatch — possible CSRF attack')
         }
 
-        // Route through CORS proxy when needed (cross-origin requests)
+        if (cancelled) {
+          return
+        }
+
         const fetchFn = await createOAuthFetch(oauthState.serverUrl)
 
-        // Exchange authorization code for tokens using the MCP SDK
         const { discoverOAuthMetadata, exchangeAuthorization } = await import(
           '@modelcontextprotocol/sdk/client/auth.js'
         )
@@ -88,6 +92,10 @@ export const useMcpOAuthCallback = () => {
         const metadata = await discoverOAuthMetadata(oauthState.serverUrl, {}, fetchFn)
         if (!metadata) {
           throw new Error('Could not discover OAuth metadata from the MCP server')
+        }
+
+        if (cancelled) {
+          return
         }
 
         const clientInfo = oauthState.clientInfo ? JSON.parse(oauthState.clientInfo) : undefined
@@ -101,7 +109,10 @@ export const useMcpOAuthCallback = () => {
           fetchFn,
         })
 
-        // Store tokens in credential store (encrypted)
+        if (cancelled) {
+          return
+        }
+
         await credentialStoreRef.current.save(oauthState.serverId, {
           type: 'oauth',
           accessToken: tokens.access_token,
@@ -111,23 +122,28 @@ export const useMcpOAuthCallback = () => {
           scope: tokens.scope,
         })
 
-        // Clear OAuth state from settings
         await clearMcpOAuthState()
-
-        // Reconnect the server — tokens are now in the credential store
         await reconnectServer(oauthState.serverId)
       } catch (err) {
+        if (cancelled) {
+          return
+        }
         const message = err instanceof Error ? err.message : 'OAuth authorization failed'
         console.error('MCP OAuth callback error:', message)
         setOauthError(message)
         await clearMcpOAuthState()
       } finally {
-        setIsProcessingOAuth(false)
-        navigate('.', { replace: true, state: null })
+        if (!cancelled) {
+          setIsProcessingOAuth(false)
+          navigate('.', { replace: true, state: null })
+        }
       }
     }
 
     handleCallback()
+    return () => {
+      cancelled = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state])
 
