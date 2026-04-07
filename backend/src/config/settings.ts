@@ -21,6 +21,13 @@ const settingsSchema = z.object({
   microsoftClientId: z.string().default(''),
   microsoftClientSecret: z.string().default(''),
 
+  // OIDC Settings (enterprise self-hosted)
+  authMode: z.enum(['consumer', 'oidc']).default('consumer'),
+  oidcClientId: z.string().default(''),
+  oidcClientSecret: z.string().default(''),
+  oidcIssuer: z.string().default(''),
+  betterAuthUrl: z.string().default('http://localhost:8000'),
+
   // General settings
   logLevel: z.enum(['DEBUG', 'INFO', 'WARN', 'ERROR']).default('INFO'),
   port: z.coerce.number().default(8000),
@@ -44,7 +51,10 @@ const settingsSchema = z.object({
   corsOrigins: z.string().default('http://localhost:1420'),
   corsOriginRegex: z
     .string()
-    .default('^(tauri://localhost|http://tauri\\.localhost|http://localhost:\\d+|null|file://.*)$'),
+    .default('^(tauri://localhost|http://tauri\\.localhost|http://localhost:\\d+)$')
+    // Value is from CORS_ORIGIN_REGEX env var set by the server deployer, not user input.
+    // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp
+    .transform((val) => (val ? new RegExp(val) : null)),
   corsAllowCredentials: z.boolean().default(true),
   corsAllowMethods: z.string().default('GET,POST,PUT,DELETE,PATCH,OPTIONS'),
   corsAllowHeaders: z
@@ -73,6 +83,11 @@ const parseSettings = (): Settings => {
     googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
     microsoftClientId: process.env.MICROSOFT_CLIENT_ID || '',
     microsoftClientSecret: process.env.MICROSOFT_CLIENT_SECRET || '',
+    authMode: (process.env.AUTH_MODE || 'consumer').toLowerCase(),
+    oidcClientId: process.env.OIDC_CLIENT_ID || '',
+    oidcClientSecret: process.env.OIDC_CLIENT_SECRET || '',
+    oidcIssuer: process.env.OIDC_ISSUER || '',
+    betterAuthUrl: process.env.BETTER_AUTH_URL || 'http://localhost:8000',
     logLevel: (process.env.LOG_LEVEL || 'INFO').toUpperCase(),
     port: process.env.PORT || '8000',
     appUrl: process.env.APP_URL || 'http://localhost:1420',
@@ -86,8 +101,7 @@ const parseSettings = (): Settings => {
     powersyncTokenExpirySeconds: process.env.POWERSYNC_TOKEN_EXPIRY_SECONDS || '3600',
     corsOrigins: process.env.CORS_ORIGINS || 'http://localhost:1420',
     corsOriginRegex:
-      process.env.CORS_ORIGIN_REGEX ||
-      '^(tauri://localhost|http://tauri\\.localhost|http://localhost:\\d+|null|file://.*)$',
+      process.env.CORS_ORIGIN_REGEX ?? '^(tauri://localhost|http://tauri\\.localhost|http://localhost:\\d+)$',
     corsAllowCredentials: process.env.CORS_ALLOW_CREDENTIALS !== 'false',
     corsAllowMethods: process.env.CORS_ALLOW_METHODS || 'GET,POST,PUT,DELETE,PATCH,OPTIONS',
     corsAllowHeaders:
@@ -133,7 +147,7 @@ export const getCorsOriginsList = (settings: Settings): string[] => {
  * Get CORS origins as either a RegExp pattern or array of strings
  */
 export const getCorsOrigins = (settings: Settings): RegExp | string[] => {
-  return settings.corsOriginRegex ? new RegExp(settings.corsOriginRegex) : getCorsOriginsList(settings)
+  return settings.corsOriginRegex ?? getCorsOriginsList(settings)
 }
 
 export const getCorsMethodsList = (settings: Settings): string[] => {

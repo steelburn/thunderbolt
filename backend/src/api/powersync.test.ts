@@ -26,7 +26,7 @@ const powersyncSettings: Settings = {
   posthogHost: '',
   posthogApiKey: '',
   corsOrigins: '',
-  corsOriginRegex: '',
+  corsOriginRegex: null,
   corsAllowCredentials: true,
   corsAllowMethods: '',
   corsAllowHeaders: '',
@@ -37,6 +37,11 @@ const powersyncSettings: Settings = {
   powersyncJwtKid: 'test-kid',
   powersyncJwtSecret: 'test-jwt-secret-min-32-chars-long',
   powersyncTokenExpirySeconds: 3600,
+  authMode: 'consumer' as const,
+  oidcClientId: '',
+  oidcClientSecret: '',
+  oidcIssuer: '',
+  betterAuthUrl: 'http://localhost:8000',
 }
 
 describe('PowerSync API', () => {

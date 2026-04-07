@@ -50,7 +50,7 @@ describe('Main Routes', () => {
       posthogHost: 'https://us.i.posthog.com',
       posthogApiKey: 'ph_test',
       corsOrigins: 'http://localhost:1420',
-      corsOriginRegex: '',
+      corsOriginRegex: null,
       corsAllowCredentials: true,
       corsAllowMethods: 'GET,POST,PUT,DELETE,PATCH,OPTIONS',
       corsAllowHeaders:
@@ -62,6 +62,11 @@ describe('Main Routes', () => {
       powersyncJwtKid: '',
       powersyncJwtSecret: '',
       powersyncTokenExpirySeconds: 3600,
+      authMode: 'consumer' as const,
+      oidcClientId: '',
+      oidcClientSecret: '',
+      oidcIssuer: '',
+      betterAuthUrl: 'http://localhost:8000',
     } satisfies Settings)
   })
 

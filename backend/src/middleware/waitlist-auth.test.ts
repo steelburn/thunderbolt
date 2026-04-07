@@ -22,7 +22,7 @@ const createMockSettings = (overrides: Partial<Settings> = {}): Settings => ({
   posthogHost: 'https://us.i.posthog.com',
   posthogApiKey: '',
   corsOrigins: 'http://localhost:1420',
-  corsOriginRegex: '',
+  corsOriginRegex: null,
   corsAllowCredentials: true,
   corsAllowMethods: 'GET,POST,PUT,DELETE,PATCH,OPTIONS',
   corsAllowHeaders: 'Content-Type,Authorization',
@@ -33,6 +33,11 @@ const createMockSettings = (overrides: Partial<Settings> = {}): Settings => ({
   powersyncJwtKid: '',
   powersyncJwtSecret: '',
   powersyncTokenExpirySeconds: 3600,
+  authMode: 'consumer' as const,
+  oidcClientId: '',
+  oidcClientSecret: '',
+  oidcIssuer: '',
+  betterAuthUrl: 'http://localhost:8000',
   ...overrides,
 })
 
