@@ -49,9 +49,7 @@ export const encryptionMiddleware: DataTransformMiddleware = {
       return batch
     }
     for (const bucket of batch.buckets) {
-      for (const entry of bucket.data) {
-        await decryptEntry(entry)
-      }
+      await Promise.all(bucket.data.map(decryptEntry))
     }
     return batch
   },

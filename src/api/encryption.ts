@@ -1,5 +1,6 @@
 import type { KyInstance } from 'ky'
 import { getAuthToken, getDeviceId } from '@/lib/auth-token'
+import { getResponseStatus } from '@/lib/error-utils'
 
 // =============================================================================
 // Response types (matching backend)
@@ -37,7 +38,7 @@ export const authHeaders = (): Record<string, string> => {
 /** Register (or re-identify) this device with the server. */
 export const registerDevice = async (
   httpClient: KyInstance,
-  params: { deviceId: string; publicKey: string; name?: string },
+  params: { deviceId: string; publicKey: string; mlkemPublicKey: string; name?: string },
 ): Promise<RegisterDeviceResponse> =>
   httpClient
     .post('devices', {
@@ -83,19 +84,11 @@ export const fetchCanary = async (httpClient: KyInstance): Promise<FetchCanaryRe
 /** Check if the user has encryption set up (canary exists on server). */
 export const checkCanaryExists = async (httpClient: KyInstance): Promise<boolean> => {
   try {
-    await httpClient
-      .get('encryption/canary', {
-        headers: authHeaders(),
-        credentials: 'omit',
-      })
-      .json()
+    await fetchCanary(httpClient)
     return true
   } catch (err) {
-    if (err instanceof Error && 'response' in err) {
-      const status = (err as Error & { response: { status: number } }).response.status
-      if (status === 404) {
-        return false
-      }
+    if (getResponseStatus(err) === 404) {
+      return false
     }
     throw err
   }

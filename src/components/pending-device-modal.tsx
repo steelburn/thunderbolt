@@ -80,8 +80,8 @@ export const PendingDeviceModal = () => {
               <Button className="w-full" variant="ghost" onClick={handleDismiss}>
                 Later
               </Button>
-              <Button className="w-full" variant="ghost" onClick={() => setConfirmDenyOpen(true)}>
-                <span className="text-destructive">Deny</span>
+              <Button className="w-full text-destructive" variant="ghost" onClick={() => setConfirmDenyOpen(true)}>
+                Deny
               </Button>
             </div>
           </div>

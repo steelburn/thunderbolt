@@ -80,25 +80,21 @@ export const createEncryptionRoutes = (auth: Auth, database: typeof DbType) =>
       '/devices',
       async ({ body, set, user: sessionUser }) => {
         const userId = sessionUser!.id
-        const { deviceId, publicKey, name } = body
+        const { deviceId, publicKey, mlkemPublicKey, name } = body
 
-        // Check if device already exists
         const existingDevice = await getDeviceById(database, deviceId)
 
         if (existingDevice) {
-          // Device belongs to a different user
           if (existingDevice.userId !== userId) {
             set.status = 409
             return { error: 'Device ID already taken' }
           }
 
-          // Revoked — device cannot re-register
           if (existingDevice.revokedAt != null) {
             set.status = 403
             return { error: 'Device has been revoked' }
           }
 
-          // Encryption-registered device (has publicKey): return current state
           if (existingDevice.publicKey) {
             if (existingDevice.trusted) {
               const envelope = await getEnvelopeByDeviceId(database, deviceId, userId)
@@ -109,17 +105,15 @@ export const createEncryptionRoutes = (auth: Auth, database: typeof DbType) =>
             }
             return { trusted: false as const }
           }
-
-          // Pre-encryption device (no publicKey): fall through to register with publicKey
         }
 
-        // New device OR pre-encryption device — register with publicKey
         const deviceName = name || 'Unknown device'
         await registerDevice(database, {
           id: deviceId,
           userId,
           name: deviceName,
           publicKey,
+          mlkemPublicKey,
         })
 
         return { trusted: false as const }
@@ -127,7 +121,8 @@ export const createEncryptionRoutes = (auth: Auth, database: typeof DbType) =>
       {
         body: t.Object({
           deviceId: t.String({ maxLength: 36 }),
-          publicKey: t.String({ maxLength: 500 }),
+          publicKey: t.String({ maxLength: 200 }),
+          mlkemPublicKey: t.String({ maxLength: 1700 }),
           name: t.Optional(t.String({ maxLength: 100 })),
         }),
       },
@@ -201,14 +196,12 @@ export const createEncryptionRoutes = (auth: Auth, database: typeof DbType) =>
               }
             }
 
-            // Store envelope
             await upsertEnvelope(txDb, {
               deviceId,
               userId,
               wrappedCk: wrappedCK,
             })
 
-            // Store canary if provided (first device setup — idempotent)
             if (canaryIv && canaryCtext) {
               const canarySecretHash = canarySecret ? await hashCanarySecret(canarySecret) : undefined
               await insertEncryptionMetadataIfNotExists(txDb, {
@@ -219,7 +212,6 @@ export const createEncryptionRoutes = (auth: Auth, database: typeof DbType) =>
               })
             }
 
-            // Mark device as trusted
             await markDeviceTrusted(txDb, deviceId, userId)
           })
         } catch (err) {
@@ -238,7 +230,7 @@ export const createEncryptionRoutes = (auth: Auth, database: typeof DbType) =>
       },
       {
         body: t.Object({
-          wrappedCK: t.String({ maxLength: 500 }),
+          wrappedCK: t.String({ maxLength: 2200 }),
           canaryIv: t.Optional(t.String({ maxLength: 500 })),
           canaryCtext: t.Optional(t.String({ maxLength: 500 })),
           canarySecret: t.Optional(t.String({ maxLength: 500 })),
@@ -254,7 +246,6 @@ export const createEncryptionRoutes = (auth: Auth, database: typeof DbType) =>
         return { error: 'X-Device-ID header is required' }
       }
 
-      // Verify device belongs to this user
       const device = await getDeviceById(database, deviceId)
       if (!device || device.userId !== userId) {
         set.status = 404

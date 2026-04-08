@@ -7,6 +7,7 @@ import {
   recoverWithKey,
 } from '@/services/encryption'
 import { checkCanaryExists } from '@/api/encryption'
+import { getResponseStatus } from '@/lib/error-utils'
 
 type SyncSetupStep =
   | 'intro'
@@ -142,14 +143,11 @@ export const useSyncSetup = () => {
       return true
     } catch (err) {
       // Another device may have completed first-device setup — check canary and switch flow
-      if (err instanceof Error && 'response' in err) {
-        const status = (err as Error & { response: { status: number } }).response.status
-        if (status === 403) {
-          const hasCanary = await checkCanaryExists(httpClient)
-          if (hasCanary) {
-            dispatch({ type: 'DETECTED_ADDITIONAL_DEVICE' })
-            return true
-          }
+      if (getResponseStatus(err) === 403) {
+        const hasCanary = await checkCanaryExists(httpClient)
+        if (hasCanary) {
+          dispatch({ type: 'DETECTED_ADDITIONAL_DEVICE' })
+          return true
         }
       }
       const message = err instanceof Error ? err.message : 'Failed to set up encryption'

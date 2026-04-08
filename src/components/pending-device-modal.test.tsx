@@ -89,7 +89,14 @@ describe('PendingDeviceModal', () => {
 
     await db.insert(devicesTable).values([
       { id: currentDeviceId, userId: 'user-1', name: 'Current', trusted: 1 },
-      { id: pendingDeviceId1, userId: 'user-1', name: 'My Phone', trusted: 0, publicKey: 'pk-1' },
+      {
+        id: pendingDeviceId1,
+        userId: 'user-1',
+        name: 'My Phone',
+        trusted: 0,
+        publicKey: 'pk-1',
+        mlkemPublicKey: 'mlkem-pk-1',
+      },
     ])
 
     renderWithReactivity(<PendingDeviceModal />, {
@@ -107,8 +114,22 @@ describe('PendingDeviceModal', () => {
 
     await db.insert(devicesTable).values([
       { id: currentDeviceId, userId: 'user-1', name: 'Current', trusted: 1 },
-      { id: pendingDeviceId1, userId: 'user-1', name: 'Phone One', trusted: 0, publicKey: 'pk-1' },
-      { id: pendingDeviceId2, userId: 'user-1', name: 'Phone Two', trusted: 0, publicKey: 'pk-2' },
+      {
+        id: pendingDeviceId1,
+        userId: 'user-1',
+        name: 'Phone One',
+        trusted: 0,
+        publicKey: 'pk-1',
+        mlkemPublicKey: 'mlkem-pk-1',
+      },
+      {
+        id: pendingDeviceId2,
+        userId: 'user-1',
+        name: 'Phone Two',
+        trusted: 0,
+        publicKey: 'pk-2',
+        mlkemPublicKey: 'mlkem-pk-2',
+      },
     ])
 
     renderWithReactivity(<PendingDeviceModal />, {
@@ -133,7 +154,14 @@ describe('PendingDeviceModal', () => {
 
     await db.insert(devicesTable).values([
       { id: currentDeviceId, userId: 'user-1', name: 'Current', trusted: 1 },
-      { id: pendingDeviceId1, userId: 'user-1', name: 'My Phone', trusted: 0, publicKey: 'pk-1' },
+      {
+        id: pendingDeviceId1,
+        userId: 'user-1',
+        name: 'My Phone',
+        trusted: 0,
+        publicKey: 'pk-1',
+        mlkemPublicKey: 'mlkem-pk-1',
+      },
     ])
 
     renderWithReactivity(<PendingDeviceModal />, {
@@ -162,7 +190,14 @@ describe('PendingDeviceModal', () => {
 
     await db.insert(devicesTable).values([
       { id: currentDeviceId, userId: 'user-1', name: 'Current', trusted: 1 },
-      { id: pendingDeviceId1, userId: 'user-1', name: 'My Phone', trusted: 0, publicKey: 'pk-1' },
+      {
+        id: pendingDeviceId1,
+        userId: 'user-1',
+        name: 'My Phone',
+        trusted: 0,
+        publicKey: 'pk-1',
+        mlkemPublicKey: 'mlkem-pk-1',
+      },
     ])
 
     renderWithReactivity(<PendingDeviceModal />, {
@@ -192,7 +227,14 @@ describe('PendingDeviceModal', () => {
 
     await db.insert(devicesTable).values([
       { id: currentDeviceId, userId: 'user-1', name: 'Current', trusted: 1 },
-      { id: pendingDeviceId1, userId: 'user-1', name: 'My Phone', trusted: 0, publicKey: 'pk-1' },
+      {
+        id: pendingDeviceId1,
+        userId: 'user-1',
+        name: 'My Phone',
+        trusted: 0,
+        publicKey: 'pk-1',
+        mlkemPublicKey: 'mlkem-pk-1',
+      },
     ])
 
     renderWithReactivity(<PendingDeviceModal />, {

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { getResponseStatus } from '@/lib/error-utils'
 
 type UseApprovalPollingOptions = {
   enabled: boolean
@@ -55,12 +56,7 @@ export const useApprovalPolling = ({
           onApprovedRef.current()
         }
       } catch (err) {
-        if (
-          err instanceof Error &&
-          'response' in err &&
-          (err as Error & { response: { status: number } }).response.status === 403 &&
-          !cancelled
-        ) {
+        if (getResponseStatus(err) === 403 && !cancelled) {
           clearInterval(intervalId)
           setIsPolling(false)
           onRevokedRef.current?.()

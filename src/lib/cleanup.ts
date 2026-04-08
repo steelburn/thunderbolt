@@ -23,29 +23,17 @@ type ClearLocalDataOptions = {
 export const clearLocalData = async (options?: ClearLocalDataOptions): Promise<void> => {
   const { disableSync = true, clearEncryptionKeys = true, clearDatabase = true, clearAuth = true } = options ?? {}
 
-  if (disableSync) {
-    try {
-      await setSyncEnabled(false)
-    } catch (error) {
-      console.error('[clearLocalData] Failed to disable sync:', error)
-    }
-  }
-
-  if (clearEncryptionKeys) {
-    try {
-      await handleFullWipe()
-    } catch (error) {
-      console.error('[clearLocalData] Failed to clear encryption keys:', error)
-    }
-  }
-
-  if (clearDatabase) {
-    try {
-      await resetAppDir()
-    } catch (error) {
-      console.error('[clearLocalData] Failed to reset app directory:', error)
-    }
-  }
+  await Promise.allSettled([
+    disableSync
+      ? setSyncEnabled(false).catch((error) => console.error('[clearLocalData] Failed to disable sync:', error))
+      : undefined,
+    clearEncryptionKeys
+      ? handleFullWipe().catch((error) => console.error('[clearLocalData] Failed to clear encryption keys:', error))
+      : undefined,
+    clearDatabase
+      ? resetAppDir().catch((error) => console.error('[clearLocalData] Failed to reset app directory:', error))
+      : undefined,
+  ])
 
   if (clearAuth) {
     clearAuthToken()

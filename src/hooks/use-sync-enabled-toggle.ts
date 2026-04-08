@@ -45,6 +45,12 @@ export const useSyncEnabledToggle = () => {
     checkEncryptionMigration()
   }, [])
 
+  const enableSync = async () => {
+    await setSyncEnabled(true)
+    setSyncEnabledState(true)
+    trackEvent('settings_sync_enabled')
+  }
+
   const handleSyncToggle = async (enabled: boolean) => {
     if (!enabled) {
       await setSyncEnabled(false)
@@ -53,26 +59,20 @@ export const useSyncEnabledToggle = () => {
       return
     }
     if (!isEncryptionEnabled()) {
-      await setSyncEnabled(true)
-      setSyncEnabledState(true)
-      trackEvent('settings_sync_enabled')
+      await enableSync()
       return
     }
     // Encryption already set up (CK exists) — just enable sync, no wizard needed
     const ck = await getCK()
     if (ck) {
-      await setSyncEnabled(true)
-      setSyncEnabledState(true)
-      trackEvent('settings_sync_enabled')
+      await enableSync()
       return
     }
     setSyncSetupOpen(true)
   }
 
   const handleSyncSetupComplete = async () => {
-    await setSyncEnabled(true)
-    setSyncEnabledState(true)
-    trackEvent('settings_sync_enabled')
+    await enableSync()
     setSyncSetupOpen(false)
   }
 

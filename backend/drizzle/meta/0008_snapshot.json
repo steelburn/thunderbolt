@@ -728,6 +728,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "mlkem_public_key": {
+          "name": "mlkem_public_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "last_seen": {
           "name": "last_seen",
           "type": "timestamp",
