@@ -47,6 +47,7 @@ jobs:
           context: .
           file: deploy/docker/frontend.Dockerfile
           push: true
+          no-cache: true
           build-args: |
             VITE_THUNDERBOLT_CLOUD_URL=/v1
             VITE_AUTH_MODE=oidc
@@ -62,6 +63,7 @@ jobs:
           context: .
           file: deploy/docker/backend.Dockerfile
           push: true
+          no-cache: true
           tags: |
             ${{ env.IMAGE_PREFIX }}/thunderbolt-backend:${{ steps.version.outputs.version }}
             ${{ env.IMAGE_PREFIX }}/thunderbolt-backend:latest
@@ -74,6 +76,7 @@ jobs:
           context: .
           file: deploy/docker/postgres.Dockerfile
           push: true
+          no-cache: true
           tags: |
             ${{ env.IMAGE_PREFIX }}/thunderbolt-postgres:${{ steps.version.outputs.version }}
             ${{ env.IMAGE_PREFIX }}/thunderbolt-postgres:latest
@@ -86,6 +89,7 @@ jobs:
           context: .
           file: deploy/docker/keycloak.Dockerfile
           push: true
+          no-cache: true
           tags: |
             ${{ env.IMAGE_PREFIX }}/thunderbolt-keycloak:${{ steps.version.outputs.version }}
             ${{ env.IMAGE_PREFIX }}/thunderbolt-keycloak:latest
@@ -98,6 +102,7 @@ jobs:
           context: .
           file: deploy/docker/powersync.Dockerfile
           push: true
+          no-cache: true
           tags: |
             ${{ env.IMAGE_PREFIX }}/thunderbolt-powersync:${{ steps.version.outputs.version }}
             ${{ env.IMAGE_PREFIX }}/thunderbolt-powersync:latest
