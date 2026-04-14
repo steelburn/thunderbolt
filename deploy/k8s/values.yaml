@@ -74,6 +74,9 @@ powersync:
     kid: enterprise-powersync
     # -- Base64-encoded JWT secret (default: "enterprise-powersync-secret")
     secretBase64: ZW50ZXJwcmlzZS1wb3dlcnN5bmMtc2VjcmV0
+  db:
+    # -- Base64-encoded powersync_role database password (default: "myhighlyrandompassword")
+    passwordBase64: bXloaWdobHlyYW5kb21wYXNzd29yZA==
 
 # =============================================================================
 # Keycloak (OIDC Identity Provider)
