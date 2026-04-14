@@ -99,7 +99,9 @@ jobs:
         run: |
           pulumi config set platform "$INPUT_PLATFORM" -s "$INPUT_STACK_NAME" --non-interactive
           pulumi config set version "$INPUT_VERSION" -s "$INPUT_STACK_NAME" --non-interactive
-          pulumi config set --secret ghcrToken "$INPUT_GHCR_PAT" -s "$INPUT_STACK_NAME" --non-interactive
+          if [ -n "$INPUT_GHCR_PAT" ]; then
+            pulumi config set --secret ghcrToken "$INPUT_GHCR_PAT" -s "$INPUT_STACK_NAME" --non-interactive
+          fi
 
       - name: Deploy
         uses: pulumi/actions@v6

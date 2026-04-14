@@ -42,7 +42,7 @@ spec:
                 try { rs.status().ok && quit(0) } catch(e) {}
                 rs.initiate({_id: "rs0", version: 1, members: [{_id: 0, host: "mongo-0.mongo:27017"}]})
               '
-              until mongosh --host mongo:27017 --eval "rs.status().myState === 1" > /dev/null 2>&1; do
+              until mongosh --host mongo:27017 --eval "exit(rs.status().myState === 1 ? 0 : 1)"; do
                 echo "Waiting for replica set primary..."
                 sleep 2
               done
@@ -55,6 +55,10 @@ spec:
           env:
             - name: POWERSYNC_CONFIG_PATH
               value: /config/config.yaml
+            - name: PS_PG_URI
+              value: "postgresql://powersync_role:{{ .Values.postgres.credentials.passwordBase64 | b64dec }}@postgres:5432/{{ .Values.postgres.credentials.database }}"
+            - name: PS_MONGO_URI
+              value: "mongodb://mongo:27017/powersync"
           volumeMounts:
             - name: config
               mountPath: /config

@@ -23,13 +23,30 @@ const images = {
   powersync: `${imagePrefix}/thunderbolt-powersync:${version}`,
 }
 
+/**
+ * Returns a Pulumi secret, falling back to a default only for sandbox stacks.
+ * Production stacks must configure all secrets explicitly.
+ */
+const getSecretWithSandboxDefault = (key: string, sandboxDefault: string): pulumi.Output<string> => {
+  const value = config.getSecret(key)
+  if (value) return value
+
+  if (stackName.includes('sandbox')) {
+    pulumi.log.warn(`Using default value for '${key}' — only acceptable for sandbox stacks`)
+    return pulumi.output(sandboxDefault)
+  }
+
+  return config.requireSecret(key)
+}
+
 // Secrets with sensible defaults for sandbox (override via `pulumi config set --secret`)
 const secrets = {
-  postgresPassword: config.getSecret('postgresPassword') ?? pulumi.output('postgres'),
-  keycloakAdminPassword: config.getSecret('keycloakAdminPassword') ?? pulumi.output('admin'),
-  oidcClientSecret: config.getSecret('oidcClientSecret') ?? pulumi.output('thunderbolt-enterprise-secret'),
-  powersyncJwtSecret: config.getSecret('powersyncJwtSecret') ?? pulumi.output('enterprise-powersync-secret'),
-  betterAuthSecret: config.getSecret('betterAuthSecret') ?? pulumi.output('enterprise-better-auth-secret'),
+  postgresPassword: getSecretWithSandboxDefault('postgresPassword', 'postgres'),
+  keycloakAdminPassword: getSecretWithSandboxDefault('keycloakAdminPassword', 'admin'),
+  oidcClientSecret: getSecretWithSandboxDefault('oidcClientSecret', 'thunderbolt-enterprise-secret'),
+  powersyncJwtSecret: getSecretWithSandboxDefault('powersyncJwtSecret', 'enterprise-powersync-secret'),
+  betterAuthSecret: getSecretWithSandboxDefault('betterAuthSecret', 'enterprise-better-auth-secret'),
+  powersyncDbPassword: getSecretWithSandboxDefault('powersyncDbPassword', 'myhighlyrandompassword'),
 }
 
 // Shared: VPC (both platforms need this)
@@ -37,9 +54,12 @@ const { vpc, publicSubnets, privateSubnets, albSg, servicesSg } = createVpc(name
 
 if (platform === 'k8s') {
   // ---------- Kubernetes (EKS) ----------
+  const appUrl = config.get('appUrl') || 'http://localhost'
   const { cluster } = createEksCluster({
     name,
     version,
+    imagePrefix,
+    appUrl,
     vpcId: vpc.id,
     publicSubnetIds: publicSubnets.map((s) => s.id),
     privateSubnetIds: privateSubnets.map((s) => s.id),

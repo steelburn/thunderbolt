@@ -6,6 +6,8 @@ import * as pulumi from '@pulumi/pulumi'
 type EksArgs = {
   name: string
   version: string
+  imagePrefix: string
+  appUrl: string
   vpcId: pulumi.Input<string>
   publicSubnetIds: pulumi.Input<string>[]
   privateSubnetIds: pulumi.Input<string>[]
@@ -13,7 +15,7 @@ type EksArgs = {
 }
 
 export const createEksCluster = (args: EksArgs) => {
-  const { name, version, vpcId, publicSubnetIds, privateSubnetIds } = args
+  const { name, version, imagePrefix, appUrl, vpcId, publicSubnetIds, privateSubnetIds } = args
 
   const cluster = new eks.Cluster(`${name}-eks`, {
     vpcId,
@@ -109,7 +111,6 @@ export const createEksCluster = (args: EksArgs) => {
   chartDeps.push(storageClass)
 
   // Install the Thunderbolt Helm chart from the local chart
-  const imagePrefix = 'ghcr.io/thunderbird/thunderbolt'
   new k8s.helm.v3.Release(
     `${name}-thunderbolt`,
     {
@@ -117,7 +118,7 @@ export const createEksCluster = (args: EksArgs) => {
       namespace: 'thunderbolt',
       skipAwait: true,
       values: {
-        appUrl: 'http://localhost',
+        appUrl,
         imagePullSecrets: args.ghcrToken ? [{ name: 'ghcr-pull' }] : [],
         frontend: {
           image: { repository: `${imagePrefix}/thunderbolt-frontend`, tag: version },

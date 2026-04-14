@@ -25,7 +25,10 @@ export const createStorage = (name: string, vpcId: pulumi.Input<string>, subnetI
 
   const pgAccessPoint = new aws.efs.AccessPoint(`${name}-pg-ap`, {
     fileSystemId: efs.id,
-    posixUser: { uid: 70, gid: 70 }, // postgres user on Alpine
+    // postgres:17-alpine uses uid 70 (the `postgres` system user).
+    // MIGRATION NOTE: if upgrading from postgres:18 (uid 999), existing EFS data
+    // must be chowned: `chown -R 70:70 /postgres-data` before the new container starts.
+    posixUser: { uid: 70, gid: 70 },
     rootDirectory: {
       path: '/postgres-data',
       creationInfo: { ownerUid: 70, ownerGid: 70, permissions: '700' },

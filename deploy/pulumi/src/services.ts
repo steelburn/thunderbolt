@@ -16,6 +16,7 @@ type Secrets = {
   oidcClientSecret: pulumi.Output<string>
   powersyncJwtSecret: pulumi.Output<string>
   betterAuthSecret: pulumi.Output<string>
+  powersyncDbPassword: pulumi.Output<string>
 }
 
 type ServiceArgs = {
@@ -64,9 +65,9 @@ export const createServices = (args: ServiceArgs) => {
   })
 
   // --- GHCR registry auth (for pulling private images) ---
-  let repositoryCredentials: { credentialsParameter: pulumi.Output<string> } | undefined
+  const repositoryCredentials = (() => {
+    if (!args.ghcrToken) return undefined
 
-  if (args.ghcrToken) {
     const ghcrSecret = new aws.secretsmanager.Secret(`${name}-ghcr-creds`, {
       tags: { Name: `${name}-ghcr-creds` },
     })
@@ -88,8 +89,8 @@ export const createServices = (args: ServiceArgs) => {
       }),
     })
 
-    repositoryCredentials = { credentialsParameter: ghcrSecret.arn }
-  }
+    return { credentialsParameter: ghcrSecret.arn }
+  })()
 
   const execRoleArn = execRoleInstance.arn
   const taskRoleArn = taskRoleInstance.arn
@@ -132,6 +133,7 @@ export const createServices = (args: ServiceArgs) => {
           { name: 'POSTGRES_USER', value: 'postgres' },
           { name: 'POSTGRES_DB', value: 'postgres' },
           { name: 'POSTGRES_PASSWORD', value: args.secrets.postgresPassword },
+          { name: 'PGDATA', value: '/var/lib/postgresql/data/pgdata' },
         ],
         portMappings: [{ containerPort: 5432 }],
         mountPoints: [{ sourceVolume: 'pg-data', containerPath: '/var/lib/postgresql/data' }],
@@ -220,16 +222,19 @@ export const createServices = (args: ServiceArgs) => {
     ]),
   })
 
-  // Run the mongo init task after the mongo service is healthy
+  // Run the mongo init task and wait for it to complete successfully
   const mongoInit = new command.local.Command(
     `${name}-mongo-init-run`,
     {
-      create: pulumi.interpolate`aws ecs run-task \
+      create: pulumi.interpolate`TASK_ARN=$(aws ecs run-task \
         --cluster ${cluster.arn} \
         --task-definition ${mongoInitTaskDef.arn} \
         --launch-type FARGATE \
         --network-configuration '{"awsvpcConfiguration":{"subnets":${pulumi.jsonStringify(privateSubnetIds)},"securityGroups":["${servicesSgId}"]}}' \
-        --query 'tasks[0].taskArn' --output text`,
+        --query 'tasks[0].taskArn' --output text) && \
+        aws ecs wait tasks-stopped --cluster ${cluster.arn} --tasks "$TASK_ARN" && \
+        EXIT_CODE=$(aws ecs describe-tasks --cluster ${cluster.arn} --tasks "$TASK_ARN" --query 'tasks[0].containers[0].exitCode' --output text) && \
+        [ "$EXIT_CODE" = "0" ] || { echo "Mongo init task failed with exit code $EXIT_CODE"; exit 1; }`,
     },
     { dependsOn: [mongoService] },
   )
@@ -249,7 +254,7 @@ export const createServices = (args: ServiceArgs) => {
         image: args.images.powersync,
         essential: true,
         environment: [
-          { name: 'PS_PG_URI', value: pulumi.interpolate`postgresql://powersync_role:myhighlyrandompassword@postgres.thunderbolt.local:5432/postgres` },
+          { name: 'PS_PG_URI', value: pulumi.interpolate`postgresql://powersync_role:${args.secrets.powersyncDbPassword}@postgres.thunderbolt.local:5432/postgres` },
           { name: 'PS_MONGO_URI', value: 'mongodb://mongo.thunderbolt.local:27017/powersync' },
         ],
         portMappings: [{ containerPort: 8080 }],
@@ -272,7 +277,7 @@ export const createServices = (args: ServiceArgs) => {
     loadBalancers: [
       { targetGroupArn: args.targetGroups.powersync.arn, containerName: 'powersync', containerPort: 8080 },
     ],
-  }, { dependsOn: [args.albListener] })
+  }, { dependsOn: [args.albListener, mongoInit] })
 
   // --- Keycloak ---
   const kcTaskDef = new aws.ecs.TaskDefinition(`${name}-kc-task`, {
@@ -318,6 +323,56 @@ export const createServices = (args: ServiceArgs) => {
     ],
   }, { dependsOn: [args.albListener] })
 
+  // --- Backend secrets (stored in Secrets Manager, not as cleartext env vars) ---
+  const backendSecrets = {
+    oidcClientSecret: new aws.secretsmanager.Secret(`${name}-oidc-secret`, {
+      tags: { Name: `${name}-oidc-secret` },
+    }),
+    betterAuthSecret: new aws.secretsmanager.Secret(`${name}-better-auth-secret`, {
+      tags: { Name: `${name}-better-auth-secret` },
+    }),
+    powersyncJwtSecret: new aws.secretsmanager.Secret(`${name}-powersync-jwt-secret`, {
+      tags: { Name: `${name}-powersync-jwt-secret` },
+    }),
+    databaseUrl: new aws.secretsmanager.Secret(`${name}-database-url`, {
+      tags: { Name: `${name}-database-url` },
+    }),
+  }
+
+  new aws.secretsmanager.SecretVersion(`${name}-oidc-secret-version`, {
+    secretId: backendSecrets.oidcClientSecret.id,
+    secretString: args.secrets.oidcClientSecret,
+  })
+  new aws.secretsmanager.SecretVersion(`${name}-better-auth-secret-version`, {
+    secretId: backendSecrets.betterAuthSecret.id,
+    secretString: args.secrets.betterAuthSecret,
+  })
+  new aws.secretsmanager.SecretVersion(`${name}-powersync-jwt-secret-version`, {
+    secretId: backendSecrets.powersyncJwtSecret.id,
+    secretString: args.secrets.powersyncJwtSecret,
+  })
+  new aws.secretsmanager.SecretVersion(`${name}-database-url-version`, {
+    secretId: backendSecrets.databaseUrl.id,
+    secretString: pulumi.interpolate`postgresql://postgres:${args.secrets.postgresPassword}@postgres.thunderbolt.local:5432/postgres`,
+  })
+
+  new aws.iam.RolePolicy(`${name}-exec-backend-secrets-policy`, {
+    role: execRoleInstance.name,
+    policy: pulumi.jsonStringify({
+      Version: '2012-10-17',
+      Statement: [{
+        Effect: 'Allow',
+        Action: ['secretsmanager:GetSecretValue'],
+        Resource: [
+          backendSecrets.oidcClientSecret.arn,
+          backendSecrets.betterAuthSecret.arn,
+          backendSecrets.powersyncJwtSecret.arn,
+          backendSecrets.databaseUrl.arn,
+        ],
+      }],
+    }),
+  })
+
   // --- Backend ---
   const beTaskDef = new aws.ecs.TaskDefinition(`${name}-be-task`, {
     family: `${name}-backend`,
@@ -338,20 +393,22 @@ export const createServices = (args: ServiceArgs) => {
           { name: 'AUTH_MODE', value: 'oidc' },
           { name: 'WAITLIST_ENABLED', value: 'false' },
           { name: 'DATABASE_DRIVER', value: 'postgres' },
-          { name: 'DATABASE_URL', value: pulumi.interpolate`postgresql://postgres:${args.secrets.postgresPassword}@postgres.thunderbolt.local:5432/postgres` },
           { name: 'OIDC_ISSUER', value: pulumi.interpolate`http://${args.albDnsName}/auth/realms/thunderbolt` },
           { name: 'OIDC_CLIENT_ID', value: 'thunderbolt-app' },
-          { name: 'OIDC_CLIENT_SECRET', value: args.secrets.oidcClientSecret },
           { name: 'BETTER_AUTH_URL', value: pulumi.interpolate`http://${args.albDnsName}` },
-          { name: 'BETTER_AUTH_SECRET', value: args.secrets.betterAuthSecret },
           { name: 'APP_URL', value: pulumi.interpolate`http://${args.albDnsName}` },
           { name: 'TRUSTED_ORIGINS', value: pulumi.interpolate`http://${args.albDnsName}` },
           { name: 'CORS_ORIGINS', value: pulumi.interpolate`http://${args.albDnsName}` },
           { name: 'CORS_ORIGIN_REGEX', value: '' },
           { name: 'POWERSYNC_URL', value: pulumi.interpolate`http://${args.albDnsName}/powersync` },
-          { name: 'POWERSYNC_JWT_SECRET', value: args.secrets.powersyncJwtSecret },
           { name: 'POWERSYNC_JWT_KID', value: 'enterprise-powersync' },
           { name: 'RATE_LIMIT_ENABLED', value: 'true' },
+        ],
+        secrets: [
+          { name: 'DATABASE_URL', valueFrom: backendSecrets.databaseUrl.arn },
+          { name: 'OIDC_CLIENT_SECRET', valueFrom: backendSecrets.oidcClientSecret.arn },
+          { name: 'BETTER_AUTH_SECRET', valueFrom: backendSecrets.betterAuthSecret.arn },
+          { name: 'POWERSYNC_JWT_SECRET', valueFrom: backendSecrets.powersyncJwtSecret.arn },
         ],
         portMappings: [{ containerPort: 8000 }],
         logConfiguration: logConfig('backend'),

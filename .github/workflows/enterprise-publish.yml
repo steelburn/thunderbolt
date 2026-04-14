@@ -30,6 +30,7 @@ jobs:
         id: version
         run: |
           VERSION=$(jq -r .version package.json)
+          [ -n "$VERSION" ] && [ "$VERSION" != "null" ] || { echo "Invalid version: $VERSION"; exit 1; }
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Version: $VERSION"
 
