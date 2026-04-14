@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { http } from '@/lib/http'
 import { useSettings } from '@/hooks/use-settings'
 import Loading from '@/loading'
@@ -18,6 +18,7 @@ export const validateOidcRedirectUrl = (rawUrl: string): URL => {
  */
 const OidcRedirect = () => {
   const { cloudUrl } = useSettings({ cloud_url: String })
+  const [error, setError] = useState<string | null>(null)
 
   // Legitimate useEffect: triggers an external navigation side-effect (redirect to OIDC provider)
   // that depends on an async setting value. Cannot be computed during render.
@@ -48,6 +49,7 @@ const OidcRedirect = () => {
           return
         }
         console.error('OIDC redirect failed:', err)
+        setError('Failed to start authentication. Please try again or contact your administrator.')
       }
     }
 
@@ -55,6 +57,14 @@ const OidcRedirect = () => {
 
     return () => abortController.abort()
   }, [cloudUrl.isLoading, cloudUrl.value])
+
+  if (error) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <p className="text-sm text-destructive">{error}</p>
+      </div>
+    )
+  }
 
   return <Loading />
 }
