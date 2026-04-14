@@ -61,7 +61,7 @@ const OidcRedirect = () => {
   if (error) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="text-sm text-destructive">{error}</p>
+        <p className="text-[length:var(--font-size-sm)] text-destructive">{error}</p>
       </div>
     )
   }
