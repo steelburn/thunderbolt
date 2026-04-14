@@ -36,4 +36,13 @@ describe('validateOidcRedirectUrl', () => {
   it('rejects invalid URL', () => {
     expect(() => validateOidcRedirectUrl('not-a-url')).toThrow()
   })
+
+  it('accepts HTTP on 127.0.0.1 for development', () => {
+    const url = validateOidcRedirectUrl('http://127.0.0.1:8080/authorize')
+    expect(url.hostname).toBe('127.0.0.1')
+  })
+
+  it('rejects javascript://localhost/ despite localhost hostname', () => {
+    expect(() => validateOidcRedirectUrl('javascript://localhost/alert(1)')).toThrow()
+  })
 })

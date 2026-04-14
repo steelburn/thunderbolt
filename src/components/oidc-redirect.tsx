@@ -6,10 +6,7 @@ import Loading from '@/loading'
 /** Validate that an OIDC redirect URL uses a safe protocol. */
 export const validateOidcRedirectUrl = (rawUrl: string): URL => {
   const url = new URL(rawUrl)
-  if (url.protocol === 'javascript:' || url.protocol === 'data:') {
-    throw new Error('Invalid OIDC redirect protocol')
-  }
-  if (url.protocol !== 'https:' && url.hostname !== 'localhost') {
+  if (!(url.protocol === 'https:' || (url.protocol === 'http:' && (url.hostname === 'localhost' || url.hostname === '127.0.0.1')))) {
     throw new Error('OIDC redirect must use HTTPS')
   }
   return url
