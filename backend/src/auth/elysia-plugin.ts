@@ -24,10 +24,7 @@ export const createAuthMacro = (auth: Auth) =>
     },
   })
 
-/**
- * Create a Better Auth plugin for Elysia with the provided database
- * This allows tests to inject their own database instance
- */
+/** Create a Better Auth plugin for Elysia with the provided database. */
 export const createBetterAuthPlugin = (database: typeof DbType) => {
   const auth = createAuth(database)
 

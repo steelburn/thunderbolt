@@ -1,4 +1,4 @@
-import { getCorsOrigins, getSettings } from '@/config/settings'
+import { getCorsOriginsList, getSettings } from '@/config/settings'
 import { safeErrorHandler } from '@/middleware/error-handling'
 import { buildQueryString, defaultRequestDenylist, extractResponseHeaders, filterHeaders } from '@/utils/request'
 import cors from '@elysiajs/cors'
@@ -18,7 +18,7 @@ export const createPostHogRoutes = (fetchFn: typeof fetch = globalThis.fetch) =>
     .onError(safeErrorHandler)
     .use(
       cors({
-        origin: getCorsOrigins(settings),
+        origin: getCorsOriginsList(settings),
         allowedHeaders: settings.corsAllowHeaders,
         exposeHeaders: settings.corsExposeHeaders,
       }),
@@ -46,6 +46,11 @@ export const createPostHogRoutes = (fetchFn: typeof fetch = globalThis.fetch) =>
         })
 
         const responseHeaders = extractResponseHeaders(response.headers)
+
+        // Prevent XSS: proxied content must never execute scripts in our origin
+        responseHeaders.set('content-security-policy', 'sandbox')
+        responseHeaders.set('content-disposition', 'attachment')
+        responseHeaders.set('x-content-type-options', 'nosniff')
 
         responseHeaders.set('cross-origin-resource-policy', 'cross-origin')
 

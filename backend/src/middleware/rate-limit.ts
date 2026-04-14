@@ -8,7 +8,11 @@ type AuthResolvedContext = {
   user?: { id: string } | null
 }
 
-// TODO(THU-113): Add proof-of-work challenge (ALTCHA) for auth route abuse prevention
+// TODO(THU-113): Add proof-of-work challenge (ALTCHA) for auth route abuse prevention.
+// This is the planned solution for rate-limiting unauthenticated endpoints (waitlist, OTP send)
+// without storing client IPs in the database. Note: server-side auth.api calls (e.g. from
+// /waitlist/join) bypass Better Auth's HTTP rate limiter entirely, so the waitlist OTP
+// generation path is currently unthrottled.
 
 type RateLimitTier = 'inference' | 'pro'
 

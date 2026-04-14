@@ -3,7 +3,7 @@ import { createBetterAuthPlugin } from '@/auth/elysia-plugin'
 import { createGoogleAuthRoutes } from '@/auth/google'
 import { createMicrosoftAuthRoutes } from '@/auth/microsoft'
 import { createLoggerMiddleware, createStandaloneLogger } from '@/config/logger'
-import { getCorsOrigins, getCorsOriginsList, getSettings } from '@/config/settings'
+import { getCorsOriginsList, getSettings } from '@/config/settings'
 import { runMigrations } from '@/db/client'
 import { createInferenceRoutes } from '@/inference/routes'
 import { createErrorHandlingMiddleware } from '@/middleware/error-handling'
@@ -14,6 +14,7 @@ import { createPostHogRoutes } from '@/posthog/routes'
 import { createProToolsRoutes } from '@/pro/routes'
 import { createWaitlistRoutes } from '@/waitlist/routes'
 import { createAccountRoutes } from '@/api/account'
+import { createEncryptionRoutes } from '@/api/encryption'
 import { createPowerSyncRoutes } from '@/api/powersync'
 import type { AppDeps } from '@/types'
 import { cors } from '@elysiajs/cors'
@@ -38,7 +39,8 @@ export const createApp = async (deps?: AppDeps) => {
     prefix: '/v1',
   })
 
-  if (process.env.NODE_ENV !== 'production') {
+  if (settings.swaggerEnabled) {
+    // Lazy import to avoid loading swagger and its transitive deps in production
     const { swagger } = await import('@elysiajs/swagger')
     app.use(
       swagger({
@@ -66,7 +68,7 @@ export const createApp = async (deps?: AppDeps) => {
     configuredApp
       .use(
         cors({
-          origin: getCorsOrigins(settings),
+          origin: getCorsOriginsList(settings),
           credentials: settings.corsAllowCredentials,
           methods: settings.corsAllowMethods,
           allowedHeaders: settings.corsAllowHeaders,
@@ -86,8 +88,16 @@ export const createApp = async (deps?: AppDeps) => {
       .use(createInferenceRoutes(auth, createInferenceRateLimit(database, rateLimitSettings)))
       .use(createPostHogRoutes(fetchFn))
       .use(createMcpProxyRoutes(auth, fetchFn))
-      .use(createWaitlistRoutes({ database, auth, emailService: deps?.waitlistEmailService }))
+      .use(
+        createWaitlistRoutes({
+          database,
+          auth,
+          emailService: deps?.waitlistEmailService,
+          cooldownMs: deps?.otpCooldownMs,
+        }),
+      )
       .use(createPowerSyncRoutes(auth, settings, database))
+      .use(createEncryptionRoutes(auth, database))
       .use(createAccountRoutes(auth, database))
   )
 }
@@ -139,7 +149,7 @@ const startServer = async () => {
           '🦊 Elysia server started',
         )
 
-        if (process.env.NODE_ENV !== 'production') {
+        if (settings.swaggerEnabled) {
           log.info(
             {
               swaggerUrl: `http://localhost:${settings.port}/v1/swagger`,
@@ -161,7 +171,7 @@ const startServer = async () => {
       process.exit(0)
     })
   } catch (error) {
-    log.error({ error }, 'Failed to start server')
+    log.error({ err: error }, 'Failed to start server')
     process.exit(1)
   }
 }

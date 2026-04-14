@@ -1,4 +1,4 @@
-import { useAuth, useHttpClient } from '@/contexts'
+import { useAuth } from '@/contexts'
 import { useSignInModal } from '@/contexts/sign-in-modal-context'
 import { useCountryUnits } from '@/hooks/use-country-units'
 import type { LocationData } from '@/hooks/use-location-search'
@@ -6,9 +6,10 @@ import { useSettings } from '@/hooks/use-settings'
 import { useUnitsOptions } from '@/hooks/use-units-options'
 import { privacyPolicyUrl } from '@/lib/constants'
 import { extractCountryFromLocation } from '@/lib/country-utils'
-import { clearAuthToken } from '@/lib/auth-token'
+import { clearLocalData } from '@/lib/cleanup'
 import { trackEvent } from '@/lib/posthog'
 import type { CountryUnitsData } from '@/types'
+import { useHttpClient } from '@/contexts'
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 
 import { LocationSearchCombobox } from '@/components/location-search-combobox'
@@ -27,7 +28,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { SyncEnableWarningDialog } from '@/components/sync-enable-warning-dialog'
+import { SyncSetupModal } from '@/components/sync-setup/sync-setup-modal'
 import { Button } from '@/components/ui/button'
 import { Combobox } from '@/components/ui/combobox'
 import { PageHeader } from '@/components/ui/page-header'
@@ -35,9 +36,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SectionCard } from '@/components/ui/section-card'
 import { Switch } from '@/components/ui/switch'
-import { resetAppDir } from '@/lib/fs'
 import { usePostHog } from 'posthog-js/react'
-import { setSyncEnabled } from '@/db/powersync'
 import { usePowerSyncStatus } from '@/hooks/use-powersync-status'
 import { useSyncEnabledToggle } from '@/hooks/use-sync-enabled-toggle'
 
@@ -83,7 +82,6 @@ export default function PreferencesSettingsPage() {
   const [state, dispatch] = useReducer(preferencesReducer, initialState)
   const { isResetting, isDeletingAccount, localizationDialogOpen, pendingCountryUnits } = state
   const authClient = useAuth()
-  const httpClient = useHttpClient()
   const { data: session } = authClient.useSession()
   const isAuthenticated = !!session?.user
   const { openSignInModal } = useSignInModal()
@@ -95,7 +93,8 @@ export default function PreferencesSettingsPage() {
 
   const postHog = usePostHog()
 
-  const { syncEnabled, syncEnableWarningOpen, setSyncEnableWarningOpen, handleSyncToggle, handleConfirmEnableSync } =
+  const httpClient = useHttpClient()
+  const { syncEnabled, syncSetupOpen, setSyncSetupOpen, handleSyncToggle, handleSyncSetupComplete } =
     useSyncEnabledToggle()
   const { connectionStatus } = usePowerSyncStatus()
   const isConnecting = connectionStatus === 'connecting'
@@ -127,6 +126,7 @@ export default function PreferencesSettingsPage() {
     date_format: 'MM/DD/YYYY',
     time_format: '12h',
     currency: 'USD',
+    cloud_url: 'http://localhost:8000/v1',
   })
 
   // Local state for name input (only save on blur to avoid DB writes on every keystroke)
@@ -256,9 +256,8 @@ export default function PreferencesSettingsPage() {
   const handleResetDatabase = async () => {
     dispatch({ type: 'SET_IS_RESETTING', payload: true })
     try {
-      await resetAppDir()
+      await clearLocalData()
       trackEvent('settings_database_reset')
-      // Refresh the page to reinitialize the app
       window.location.reload()
     } catch (error) {
       console.error('Failed to reset database:', error)
@@ -271,10 +270,8 @@ export default function PreferencesSettingsPage() {
     dispatch({ type: 'SET_IS_DELETING_ACCOUNT', payload: true })
 
     try {
-      await setSyncEnabled(false)
-      await httpClient.delete('account')
-      await clearAuthToken()
-      await resetAppDir()
+      await httpClient.delete('account', { credentials: 'omit' })
+      await clearLocalData()
       window.location.reload()
     } catch (error) {
       console.error('Failed to delete account:', error)
@@ -647,13 +644,13 @@ export default function PreferencesSettingsPage() {
           {isAuthenticated ? (
             <div className="flex-row flex items-center gap-4 justify-between">
               <div>
-                <label className="text-sm font-medium">Sync Data Between Devices</label>
+                <label className="text-sm font-medium">Sync This Device With Cloud</label>
               </div>
               <Switch checked={syncEnabled} onCheckedChange={handleSyncToggle} disabled={isConnecting} />
             </div>
           ) : (
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium">Sync Data Between Devices</label>
+              <label className="text-sm font-medium">Sync This Device With Cloud</label>
               <Button onClick={openSignInModal}>Sign In</Button>
             </div>
           )}
@@ -737,11 +734,7 @@ export default function PreferencesSettingsPage() {
         </div>
       </SectionCard>
 
-      <SyncEnableWarningDialog
-        open={syncEnableWarningOpen}
-        onOpenChange={setSyncEnableWarningOpen}
-        onConfirm={handleConfirmEnableSync}
-      />
+      <SyncSetupModal open={syncSetupOpen} onOpenChange={setSyncSetupOpen} onComplete={handleSyncSetupComplete} />
 
       <TelemetryRequiredModal ref={telemetryRequiredModalRef} onEnableTelemetry={handleEnableTelemetry} />
 
