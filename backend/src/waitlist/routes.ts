@@ -10,7 +10,7 @@ import {
 import type { db } from '@/db/client'
 import { normalizeEmail } from '@/lib/email'
 import { safeErrorHandler } from '@/middleware/error-handling'
-import { Elysia, t } from 'elysia'
+import { Elysia, type AnyElysia, t } from 'elysia'
 import {
   isAutoApprovedDomain,
   sendWaitlistJoinedEmail as defaultSendJoinedEmail,
@@ -85,6 +85,7 @@ type WaitlistRoutesOptions = {
   emailService?: WaitlistEmailService
   /** Cooldown between OTP requests per email in ms. Default: 15000. Set to 0 to disable. */
   cooldownMs?: number
+  ipRateLimit?: AnyElysia
 }
 
 export const createWaitlistRoutes = ({
@@ -92,12 +93,18 @@ export const createWaitlistRoutes = ({
   auth,
   emailService = defaultEmailService,
   cooldownMs = DEFAULT_COOLDOWN_MS,
+  ipRateLimit,
 }: WaitlistRoutesOptions) => {
   // Per-instance cooldown tracker. Tracks when the last OTP request was made for each email
   // to prevent rapid code cycling. In-memory is appropriate: 15s window, single-instance defense.
   const emailCooldowns = new Map<string, number>()
 
-  return new Elysia({ prefix: '/waitlist' }).onError(safeErrorHandler).post(
+  const app = new Elysia({ prefix: '/waitlist' }).onError(safeErrorHandler)
+  if (ipRateLimit) {
+    app.use(ipRateLimit)
+  }
+
+  return app.post(
     '/join',
     async ({ body, set }) => {
       const email = normalizeEmail(body.email)

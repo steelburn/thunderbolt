@@ -8,7 +8,7 @@ import { runMigrations } from '@/db/client'
 import { createInferenceRoutes } from '@/inference/routes'
 import { createErrorHandlingMiddleware } from '@/middleware/error-handling'
 import { createHttpLoggingMiddleware } from '@/middleware/http-logging'
-import { createInferenceRateLimit, createProRateLimit } from '@/middleware/rate-limit'
+import { createAuthIpRateLimit, createInferenceRateLimit, createProRateLimit } from '@/middleware/rate-limit'
 import { createMcpProxyRoutes } from '@/mcp-proxy/routes'
 import { createPostHogRoutes } from '@/posthog/routes'
 import { createProToolsRoutes } from '@/pro/routes'
@@ -58,11 +58,15 @@ export const createApp = async (deps?: AppDeps) => {
   const { instrumentation } = await import('@/config/instrumentation')
   const configuredApp = instrumentation ? app.use(instrumentation) : app
 
-  // Create auth plugin with the database instance (tests may inject their own auth)
-  const { plugin: betterAuthPlugin, auth: createdAuth } = createBetterAuthPlugin(database)
-  const auth = deps?.auth ?? createdAuth
-
   const rateLimitSettings = { enabled: settings.rateLimitEnabled }
+  const ipRateLimitSettings = { ...rateLimitSettings, trustedProxy: settings.trustedProxy }
+
+  // Create auth plugin with the database instance (tests may inject their own auth)
+  const { plugin: betterAuthPlugin, auth: createdAuth } = createBetterAuthPlugin(
+    database,
+    createAuthIpRateLimit(database, ipRateLimitSettings),
+  )
+  const auth = deps?.auth ?? createdAuth
 
   return (
     configuredApp
@@ -94,6 +98,7 @@ export const createApp = async (deps?: AppDeps) => {
           auth,
           emailService: deps?.waitlistEmailService,
           cooldownMs: deps?.otpCooldownMs,
+          ipRateLimit: createAuthIpRateLimit(database, ipRateLimitSettings),
         }),
       )
       .use(createPowerSyncRoutes(auth, settings, database))
