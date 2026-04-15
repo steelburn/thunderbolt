@@ -3,6 +3,7 @@ import { createContext, useContext, useState, type ReactNode } from 'react'
 import { SignInModal } from '@/components/sign-in-modal'
 import { SyncSetupModal } from '@/components/sync-setup/sync-setup-modal'
 import { setSyncEnabled } from '@/db/powersync'
+import { needsSyncSetupWizard } from '@/db/encryption'
 import { trackEvent } from '@/lib/posthog'
 
 type SignInModalContextValue = {
@@ -29,9 +30,14 @@ export const SignInModalProvider = ({ children }: SignInModalProviderProps) => {
 
   const openSignInModal = () => setSignInOpen(true)
 
-  const handleSignInSuccess = () => {
+  const handleSignInSuccess = async () => {
     setSignInOpen(false)
-    setSyncSetupOpen(true)
+    if (await needsSyncSetupWizard()) {
+      setSyncSetupOpen(true)
+      return
+    }
+    await setSyncEnabled(true)
+    trackEvent('settings_sync_enabled')
   }
 
   const handleSyncSetupComplete = async () => {

@@ -1,5 +1,17 @@
-/** Whether E2E encryption is enabled. Defaults to true. */
-export const isEncryptionEnabled = (): boolean => import.meta.env.VITE_E2EE_ENABLED !== 'false'
+/** Whether E2E encryption is enabled. Defaults to false — set VITE_E2EE_ENABLED="true" to enable. */
+export const isEncryptionEnabled = (): boolean => import.meta.env.VITE_E2EE_ENABLED === 'true'
+
+/**
+ * Returns true when the sync setup wizard is needed before enabling sync.
+ * The wizard is required only when E2EE is enabled AND no Content Key exists yet.
+ */
+export const needsSyncSetupWizard = async (): Promise<boolean> => {
+  if (!isEncryptionEnabled()) {
+    return false
+  }
+  const { getCK } = await import('@/crypto/key-storage')
+  return !(await getCK())
+}
 
 /**
  * Single source of truth for encrypted tables and their columns.

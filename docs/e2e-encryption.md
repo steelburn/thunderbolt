@@ -8,6 +8,31 @@ For the sync pipeline integration, see [powersync-sync-middleware.md](powersync-
 
 ---
 
+## Configuration
+
+E2EE is **disabled by default**. Both frontend and backend have their own flag — they must be kept in sync:
+
+| Variable | Where | Default | Effect when enabled |
+| --- | --- | --- | --- |
+| `VITE_E2EE_ENABLED` | Frontend `.env` | `false` | Encrypts/decrypts data, shows setup wizard, generates keys |
+| `E2EE_ENABLED` | Backend `.env` | `false` | Requires device trust flow before allowing sync |
+
+```env
+# Frontend (.env)
+VITE_E2EE_ENABLED="true"
+
+# Backend (backend/.env)
+E2EE_ENABLED=true
+```
+
+When disabled (default), sync works without encryption — no setup wizard, no key generation, no recovery key. The backend auto-trusts devices and skips the envelope flow. The encryption API endpoints remain available but are not called.
+
+**Frontend control point:** `isEncryptionEnabled()` in `src/db/encryption/config.ts`. The companion `needsSyncSetupWizard()` helper combines the encryption-enabled check with the CK-exists check — it returns `true` only when E2EE is on and no Content Key has been set up yet. Both the sign-in flow and the sync toggle use this helper to decide whether to show the setup wizard or enable sync directly.
+
+**Backend control point:** `e2eeEnabled` in `backend/src/config/settings.ts`. When `false`, `validateDeviceForSync()` skips the trust check and `issuePowerSyncToken()` auto-trusts devices on upsert.
+
+---
+
 ## Key Concepts
 
 | Concept | Description |
@@ -77,7 +102,7 @@ To add a new encrypted column, add the column name to `encryptedColumnsMap` in t
 | `src/crypto/key-storage.ts` | IndexedDB key storage |
 | `src/crypto/canary.ts` | Canary creation and verification |
 | `src/crypto/recovery-key.ts` | BIP-39 mnemonic encoding/decoding |
-| `src/db/encryption/config.ts` | Encrypted columns map (single source of truth) |
+| `src/db/encryption/config.ts` | `isEncryptionEnabled()`, `needsSyncSetupWizard()`, and encrypted columns map |
 | `src/db/encryption/codec.ts` | AES-GCM codec with CK cache |
 | `src/services/encryption.ts` | Service layer orchestrating all flows |
 | `backend/src/api/encryption.ts` | Backend API routes |
