@@ -2,7 +2,7 @@ import { getSettings } from '@/dal'
 import { defaultSettingCloudUrl } from '@/defaults/settings'
 import { withTimeout } from '@/lib/timeout'
 import type { AbstractPowerSyncDatabase } from '@powersync/common'
-import { type PowerSyncDatabase, SyncStreamConnectionMethod, WASQLiteOpenFactory, WASQLiteVFS } from '@powersync/web'
+import { PowerSyncDatabase, SyncStreamConnectionMethod, WASQLiteOpenFactory, WASQLiteVFS } from '@powersync/web'
 import type { WebPowerSyncDatabaseOptions } from '@powersync/web'
 import { wrapPowerSyncWithDrizzle } from '@powersync/drizzle-driver'
 import type { DatabaseInterface, AnyDrizzleDatabase } from '../database-interface'
@@ -12,6 +12,7 @@ import { ThunderboltConnector } from './connector'
 import { getPlatform, getWebBrowser } from '@/lib/platform'
 import { ThunderboltPowerSyncDatabase } from './ThunderboltPowerSyncDatabase'
 import { encryptionMiddleware } from './middleware/EncryptionMiddleware'
+import { isEncryptionEnabled } from '@/db/encryption/config'
 
 /** PowerSync config: default (Chrome/Edge/Firefox web) vs safari-tauri (Safari web, Tauri) */
 export type PowerSyncDatabaseConfig = 'default' | 'safari-tauri'
@@ -119,22 +120,27 @@ export const setSyncEnabled = async (enabled: boolean): Promise<void> => {
 /** @internal Exported for testing */
 export const getPowerSyncOptions = (path: string, config: PowerSyncDatabaseConfig = getPowerSyncDatabaseConfig()) => {
   const dbFilename = path.includes('/') ? path.split('/').pop() || 'thunderbolt.db' : path
+  const e2ee = isEncryptionEnabled()
 
   if (config === 'default') {
     return {
       database: { dbFilename },
       schema: AppSchema as unknown as WebPowerSyncDatabaseOptions['schema'],
-      transformers: [encryptionMiddleware],
-      // Use a custom SharedWorker that embeds TransformableBucketStorage with encryption middleware.
-      // This enables multi-tab support while still running transformations before local DB writes.
-      // The standard SharedWorker hardcodes SqliteBucketStorage and ignores any main-thread adapter.
-      sync: {
-        worker: () =>
-          new SharedWorker(new URL('./worker/ThunderboltSharedSyncImplementation.worker.ts', import.meta.url), {
-            type: 'module',
-            name: `shared-sync-${dbFilename}`,
-          }),
-      },
+      ...(e2ee
+        ? {
+            transformers: [encryptionMiddleware],
+            // Use a custom SharedWorker that embeds TransformableBucketStorage with encryption middleware.
+            // This enables multi-tab support while still running transformations before local DB writes.
+            // The standard SharedWorker hardcodes SqliteBucketStorage and ignores any main-thread adapter.
+            sync: {
+              worker: () =>
+                new SharedWorker(new URL('./worker/ThunderboltSharedSyncImplementation.worker.ts', import.meta.url), {
+                  type: 'module',
+                  name: `shared-sync-${dbFilename}`,
+                }),
+            },
+          }
+        : {}),
     }
   }
 
@@ -158,7 +164,7 @@ export const getPowerSyncOptions = (path: string, config: PowerSyncDatabaseConfi
     schema: AppSchema as unknown as WebPowerSyncDatabaseOptions['schema'],
     flags: { enableMultiTabs: false },
     sync: { worker: '/@powersync/worker/SharedSyncImplementation.umd.js' },
-    transformers: [encryptionMiddleware],
+    ...(e2ee ? { transformers: [encryptionMiddleware] } : {}),
   }
 }
 
@@ -201,7 +207,9 @@ export class PowerSyncDatabaseImpl implements DatabaseInterface {
 
     const options = getPowerSyncOptions(path)
 
-    this.powerSync = new ThunderboltPowerSyncDatabase(options)
+    // Use ThunderboltPowerSyncDatabase (with TransformableBucketStorage) only when E2EE is enabled.
+    // When disabled, the standard PowerSyncDatabase avoids unnecessary middleware overhead.
+    this.powerSync = isEncryptionEnabled() ? new ThunderboltPowerSyncDatabase(options) : new PowerSyncDatabase(options)
 
     // Wrap with Drizzle for type-safe queries.
     // Cast instance: drizzle-driver expects AbstractPowerSyncDatabase from root @powersync/common; PowerSyncDatabase is from @powersync/web (nested common).

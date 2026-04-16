@@ -1,6 +1,8 @@
-import { describe, expect, it } from 'bun:test'
+import { afterEach, describe, expect, it } from 'bun:test'
 import { getPowerSyncDatabaseConfig, getPowerSyncOptions } from './database'
 import { WASQLiteOpenFactory } from '@powersync/web'
+
+const setE2EE = (enabled: boolean) => localStorage.setItem('e2ee_enabled', String(enabled))
 
 describe('getPowerSyncDatabaseConfig', () => {
   it('returns default for web + Chrome', () => {
@@ -37,6 +39,8 @@ describe('getPowerSyncDatabaseConfig', () => {
 })
 
 describe('getPowerSyncOptions', () => {
+  afterEach(() => localStorage.removeItem('e2ee_enabled'))
+
   describe('default config (web + non-Safari)', () => {
     it('returns database with dbFilename and schema', () => {
       const options = getPowerSyncOptions('opfs/thunderbolt-sync.db', 'default')
@@ -59,10 +63,19 @@ describe('getPowerSyncOptions', () => {
       expect(options).not.toHaveProperty('flags')
     })
 
-    it('includes custom SharedWorker for sync', () => {
-      const options = getPowerSyncOptions('thunderbolt.db')
+    it('includes custom SharedWorker and transformers when E2EE is enabled', () => {
+      setE2EE(true)
+      const options = getPowerSyncOptions('thunderbolt.db', 'default')
       expect(options).toHaveProperty('sync')
       expect(options.sync).toHaveProperty('worker')
+      expect(options).toHaveProperty('transformers')
+    })
+
+    it('omits custom SharedWorker and transformers when E2EE is disabled', () => {
+      setE2EE(false)
+      const options = getPowerSyncOptions('thunderbolt.db', 'default')
+      expect(options).not.toHaveProperty('sync')
+      expect(options).not.toHaveProperty('transformers')
     })
   })
 
@@ -79,8 +92,20 @@ describe('getPowerSyncOptions', () => {
 
     it('includes flags and sync with explicit worker paths', () => {
       const options = getPowerSyncOptions('thunderbolt.db', 'safari-tauri')
-      expect(options.flags).toEqual({ enableMultiTabs: false })
+      expect('flags' in options && options.flags).toEqual({ enableMultiTabs: false })
       expect(options.sync).toEqual({ worker: '/@powersync/worker/SharedSyncImplementation.umd.js' })
+    })
+
+    it('includes transformers when E2EE is enabled', () => {
+      setE2EE(true)
+      const options = getPowerSyncOptions('thunderbolt.db', 'safari-tauri')
+      expect(options).toHaveProperty('transformers')
+    })
+
+    it('omits transformers when E2EE is disabled', () => {
+      setE2EE(false)
+      const options = getPowerSyncOptions('thunderbolt.db', 'safari-tauri')
+      expect(options).not.toHaveProperty('transformers')
     })
 
     it('extracts dbFilename from path correctly', () => {
