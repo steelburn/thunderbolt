@@ -31,7 +31,7 @@ export type InitData = {
   posthogClient: PostHog | null
   httpClient: HttpClient
   experimentalFeatureTasks: boolean
-  appConfig: AppConfig
+  appConfig: AppConfig | null
 }
 
 export type { AppConfig } from '@/api/config'

@@ -54,8 +54,12 @@ const initializePostHog = async (httpClient?: HttpClient): Promise<PostHog | nul
 
 const executeInitializationSteps = async (httpClient?: HttpClient): Promise<HandleResult<InitData>> => {
   // Step 0: Fetch backend config and persist E2EE flag (blocks — later steps depend on it)
+  // When fetch fails (network error), preserve the cached localStorage value to avoid
+  // silently downgrading E2EE for returning users during transient outages.
   const appConfig = await fetchConfig(defaultSettingCloudUrl.value!, httpClient)
-  setEncryptionEnabled(appConfig.e2eeEnabled)
+  if (appConfig) {
+    setEncryptionEnabled(appConfig.e2eeEnabled)
+  }
 
   // Step 1: App directory creation
   let appDirPath: string

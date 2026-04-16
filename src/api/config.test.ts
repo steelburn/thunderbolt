@@ -11,7 +11,7 @@ describe('fetchConfig', () => {
     expect(result).toEqual({ e2eeEnabled: true })
   })
 
-  it('returns default config when backend is unreachable', async () => {
+  it('returns null when backend is unreachable', async () => {
     const httpClient = createMockHttpClient(null, 'http://unreachable.local')
     // Override with a failing fetch
     const failingClient = {
@@ -26,6 +26,6 @@ describe('fetchConfig', () => {
 
     const result = await fetchConfig('http://test-api.local', failingClient)
 
-    expect(result).toEqual({ e2eeEnabled: false })
+    expect(result).toBeNull()
   })
 })
