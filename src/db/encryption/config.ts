@@ -1,3 +1,5 @@
+import { getCK } from '@/crypto/key-storage'
+
 const e2eeStorageKey = 'e2ee_enabled'
 
 /** Whether E2E encryption is enabled. Reads from localStorage (persisted from /config endpoint). */
@@ -16,7 +18,6 @@ export const needsSyncSetupWizard = async (): Promise<boolean> => {
   if (!isEncryptionEnabled()) {
     return false
   }
-  const { getCK } = await import('@/crypto/key-storage')
   return !(await getCK())
 }
 
