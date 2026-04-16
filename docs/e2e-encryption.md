@@ -10,24 +10,22 @@ For the sync pipeline integration, see [powersync-sync-middleware.md](powersync-
 
 ## Configuration
 
-E2EE is **disabled by default**. Both frontend and backend have their own flag — they must be kept in sync:
+E2EE is **disabled by default**. The backend is the single source of truth:
 
 | Variable | Where | Default | Effect when enabled |
 | --- | --- | --- | --- |
-| `VITE_E2EE_ENABLED` | Frontend `.env` | `false` | Encrypts/decrypts data, shows setup wizard, generates keys |
-| `E2EE_ENABLED` | Backend `.env` | `false` | Requires device trust flow before allowing sync |
+| `E2EE_ENABLED` | Backend `.env` | `false` | Requires device trust flow before allowing sync; frontend encrypts/decrypts data, shows setup wizard, generates keys |
 
 ```env
-# Frontend (.env)
-VITE_E2EE_ENABLED="true"
-
 # Backend (backend/.env)
 E2EE_ENABLED=true
 ```
 
+The frontend reads this flag from the backend's `GET /v1/config` endpoint at app initialization and caches it in `localStorage` for offline use. No frontend environment variable is needed.
+
 When disabled (default), sync works without encryption — no setup wizard, no key generation, no recovery key. The backend auto-trusts devices and skips the envelope flow. The encryption API endpoints remain available but are not called.
 
-**Frontend control point:** `isEncryptionEnabled()` in `src/db/encryption/config.ts`. The companion `needsSyncSetupWizard()` helper combines the encryption-enabled check with the CK-exists check — it returns `true` only when E2EE is on and no Content Key has been set up yet. Both the sign-in flow and the sync toggle use this helper to decide whether to show the setup wizard or enable sync directly.
+**Frontend control point:** `isEncryptionEnabled()` in `src/db/encryption/config.ts` reads the cached flag from `localStorage`. The companion `needsSyncSetupWizard()` helper combines the encryption-enabled check with the CK-exists check — it returns `true` only when E2EE is on and no Content Key has been set up yet. Both the sign-in flow and the sync toggle use this helper to decide whether to show the setup wizard or enable sync directly.
 
 **Backend control point:** `e2eeEnabled` in `backend/src/config/settings.ts`. When `false`, `validateDeviceForSync()` skips the trust check and `issuePowerSyncToken()` auto-trusts devices on upsert.
 

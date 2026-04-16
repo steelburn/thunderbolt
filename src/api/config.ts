@@ -1,6 +1,10 @@
 import { createClient, type HttpClient } from '@/lib/http'
 
-export type AppConfig = Record<string, never>
+export type AppConfig = {
+  e2eeEnabled: boolean
+}
+
+const defaultConfig: AppConfig = { e2eeEnabled: false }
 
 export const fetchConfig = async (cloudUrl: string, httpClient?: HttpClient): Promise<AppConfig> => {
   try {
@@ -8,6 +12,6 @@ export const fetchConfig = async (cloudUrl: string, httpClient?: HttpClient): Pr
     return await client.get('config').json<AppConfig>()
   } catch {
     console.warn('Failed to fetch app config, using defaults')
-    return {}
+    return defaultConfig
   }
 }

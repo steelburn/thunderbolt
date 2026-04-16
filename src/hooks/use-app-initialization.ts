@@ -1,6 +1,7 @@
 import { fetchConfig } from '@/api/config'
 import type { HttpClient } from '@/contexts'
 import { getSettings } from '@/dal'
+import { setEncryptionEnabled } from '@/db/encryption'
 import { getAuthToken } from '@/lib/auth-token'
 import { Database, getCurrentDatabase, setDatabase } from '@/db/database'
 import type { AnyDrizzleDatabase } from '@/db/database-interface'
@@ -52,8 +53,9 @@ const initializePostHog = async (httpClient?: HttpClient): Promise<PostHog | nul
 }
 
 const executeInitializationSteps = async (httpClient?: HttpClient): Promise<HandleResult<InitData>> => {
-  // Step 0: Fetch backend config (blocks — later steps may depend on flags)
+  // Step 0: Fetch backend config and persist E2EE flag (blocks — later steps depend on it)
   const appConfig = await fetchConfig(defaultSettingCloudUrl.value!, httpClient)
+  setEncryptionEnabled(appConfig.e2eeEnabled)
 
   // Step 1: App directory creation
   let appDirPath: string
