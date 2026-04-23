@@ -490,7 +490,7 @@ describe('Config Settings', () => {
     })
 
     it('allows mobile App Link callback', () => {
-      expect(isOAuthRedirectUriAllowed('https://thunderbolt.io/oauth/callback', settings)).toBe(true)
+      expect(isOAuthRedirectUriAllowed('https://app.thunderbolt.io/oauth/callback', settings)).toBe(true)
     })
 
     it('allows production origin from corsOrigins', () => {

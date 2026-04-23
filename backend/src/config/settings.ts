@@ -177,7 +177,7 @@ export const isOAuthRedirectUriAllowed = (uri: string, settings: Pick<Settings, 
     const url = new URL(uri)
     // Construct origin manually — url.origin returns 'null' for non-standard protocols like tauri://
     const origin = `${url.protocol}//${url.host}`
-    const allowedOrigins = [...getCorsOriginsList(settings), 'https://thunderbolt.io']
+    const allowedOrigins = [...getCorsOriginsList(settings), 'https://app.thunderbolt.io']
     if (allowedOrigins.includes(origin)) {
       return true
     }
