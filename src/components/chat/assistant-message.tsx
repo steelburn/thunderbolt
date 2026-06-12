@@ -4,14 +4,13 @@
 
 import {
   filterMessageParts,
-  type GroupableUIPart,
   type GroupedUIPart,
   groupMessageParts,
   type ReasoningGroupUIPart,
 } from '@/lib/assistant-message'
 import { extractTextFromParts } from '@/lib/message-utils'
 import { splitPartType } from '@/lib/utils'
-import type { HaystackReferenceMeta, ThunderboltUIMessage } from '@/types'
+import type { HaystackReferenceMeta, ThunderboltUIMessage, UIMessageMetadata } from '@/types'
 import type { SourceMetadata } from '@/types/source'
 import type { TextUIPart } from 'ai'
 import { memo, useMemo, type ReactNode } from 'react'
@@ -46,6 +45,7 @@ export const mountMessageParts = (
   reasoningStartTimes?: Record<string, number>,
   sources?: SourceMetadata[],
   haystackReferences?: HaystackReferenceMeta[],
+  mcpTools?: UIMessageMetadata['mcpTools'],
 ) => {
   const partElements: ReactNode[] = []
 
@@ -74,6 +74,7 @@ export const mountMessageParts = (
             hasTextPart={hasTextPart}
             reasoningTime={reasoningTime}
             reasoningStartTimes={reasoningStartTimes}
+            mcpTools={mcpTools}
           />,
         )
         break
@@ -97,10 +98,7 @@ export const mountMessageParts = (
 export const AssistantMessage = memo(
   ({ message, isStreaming, isLastMessage = false, isLastAssistantMessage = false }: AssistantMessageProps) => {
     // Memoize filtering and grouping to avoid recomputing on every render
-    const groupedParts = useMemo(() => {
-      const filtered = filterMessageParts(message.parts) as GroupableUIPart[]
-      return groupMessageParts(filtered)
-    }, [message.parts])
+    const groupedParts = useMemo(() => groupMessageParts(filterMessageParts(message.parts)), [message.parts])
 
     // Stabilize metadata references to prevent unnecessary re-renders
     // Uses JSON.stringify for deep comparison since metadata objects may have new references
@@ -128,6 +126,12 @@ export const AssistantMessage = memo(
       [JSON.stringify(message.metadata?.haystackReferences)],
     )
 
+    const mcpTools = useMemo(
+      () => message.metadata?.mcpTools,
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [JSON.stringify(message.metadata?.mcpTools)],
+    )
+
     // Memoize part element creation to prevent recreating React nodes unnecessarily
     const partElements: ReactNode[] = useMemo(
       () =>
@@ -139,8 +143,18 @@ export const AssistantMessage = memo(
           reasoningStartTimes,
           sources,
           haystackReferences,
+          mcpTools,
         ),
-      [groupedParts, isStreaming, message.id, reasoningTime, reasoningStartTimes, sources, haystackReferences],
+      [
+        groupedParts,
+        isStreaming,
+        message.id,
+        reasoningTime,
+        reasoningStartTimes,
+        sources,
+        haystackReferences,
+        mcpTools,
+      ],
     )
 
     const copyText = useMemo(() => extractTextFromParts(message.parts), [message.parts])

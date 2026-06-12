@@ -17,9 +17,13 @@ const closedError = (message = 'Connection closed') => Object.assign(new Error(m
 const tool = (tag: string): Tool => ({ tag }) as unknown as Tool
 
 /** Minimal fake satisfying the slice of `MCPClient` that `mergeMcpTools` uses,
- *  paired with the server name that becomes the tool prefix. No SDK mocking. */
+ *  paired with the server identity. `name` becomes the tool prefix; `name`/`url`
+ *  ride through to the `mcpTools` metadata map. Derived from `name` so tests can
+ *  assert the tool→server resolution without extra plumbing. No SDK mocking. */
 const named = (name: string, tools: () => Promise<Record<string, Tool>>): NamedMCPClient => ({
+  id: `id-${name}`,
   name,
+  url: `https://${name}.example.com`,
   client: { tools, close: () => {} } as unknown as MCPClient,
 })
 
@@ -179,5 +183,62 @@ describe('mergeMcpTools', () => {
     const { summary } = await mergeMcpTools({}, [empty], async () => null)
 
     expect(summary).toBeUndefined()
+  })
+
+  describe('mcpTools metadata map', () => {
+    it('maps each namespaced tool name to its owning server and bare tool name', async () => {
+      const render = named('render', async () => ({ list_services: tool('ls') }))
+
+      const { mcpTools } = await mergeMcpTools({}, [render], async () => null)
+
+      expect(mcpTools).toEqual({
+        render_list_services: { name: 'render', url: 'https://render.example.com', toolName: 'list_services' },
+      })
+    })
+
+    it('keys tools from disambiguated prefixes (render / render_2) to the right server', async () => {
+      const first = named('Render', async () => ({ deploy: tool('first') }))
+      const second = named('render', async () => ({ deploy: tool('second') }))
+
+      const { mcpTools } = await mergeMcpTools({}, [first, second], async () => null)
+
+      // Each namespaced tool name resolves back to the server that produced it —
+      // `render_deploy` → first, `render_2_deploy` → second — with no ambiguity.
+      expect(mcpTools).toEqual({
+        render_deploy: { name: 'Render', url: 'https://Render.example.com', toolName: 'deploy' },
+        render_2_deploy: { name: 'render', url: 'https://render.example.com', toolName: 'deploy' },
+      })
+    })
+
+    it('omits servers that contributed no tools', async () => {
+      const empty = named('render', async () => ({}))
+      const healthy = named('github', async () => ({ search: tool('s') }))
+
+      const { mcpTools } = await mergeMcpTools({}, [empty, healthy], async () => null)
+
+      expect(mcpTools).toEqual({
+        github_search: { name: 'github', url: 'https://github.example.com', toolName: 'search' },
+      })
+    })
+
+    it('does not record a tool skipped due to a collision with a pre-seeded built-in', async () => {
+      const toolset = { render_search: tool('built-in') }
+      const render = named('render', async () => ({ search: tool('from-mcp'), list: tool('l') }))
+
+      const { mcpTools } = await mergeMcpTools(toolset, [render], async () => null)
+
+      // The colliding `search` is skipped, so only the tool that actually merged is recorded.
+      expect(mcpTools).toEqual({
+        render_list: { name: 'render', url: 'https://render.example.com', toolName: 'list' },
+      })
+    })
+
+    it('is undefined when no MCP tools were added', async () => {
+      const empty = named('render', async () => ({}))
+
+      const { mcpTools } = await mergeMcpTools({}, [empty], async () => null)
+
+      expect(mcpTools).toBeUndefined()
+    })
   })
 })
